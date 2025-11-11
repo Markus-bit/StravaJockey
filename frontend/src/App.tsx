@@ -3,7 +3,7 @@ import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // --- ENV ---
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000") as string;
+// Vite proxy forwards '/api' -> http://localhost:4000 in dev, so we call relative paths.
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string;
 
 // --- Hjelpetyper ---
@@ -167,29 +167,37 @@ export default function App() {
     };
   }
 
-  async function snapToRoad() {
-    if (waypoints.length < 2) return alert("Trenger minst to punkter");
-    setBusy(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/route`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile,
-          spacingM,
-          points: waypoints,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Route failed");
-      setSnappedCoords(data.geometry.coordinates);
-      fitToLine(data.geometry.coordinates as [number, number][]);
-    } catch (e: any) {
-      alert(e?.message || String(e));
-    } finally {
-      setBusy(false);
-    }
+async function snapToRoad() {
+  if (waypoints.length < 2) return alert("Trenger minst to punkter");
+  setBusy(true);
+  try {
+    // Ta vare på punktene som skal sendes
+    const pts = [...waypoints];
+
+    // Skjul gamle punkter og stiplet linje umiddelbart i UI
+    clearTempOverlays();
+    setWaypoints([]); // trigger også useEffect som holder kildene i sync
+
+    const res = await fetch(`/api/route`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profile,
+        spacingM,
+        points: pts,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Route failed");
+
+    setSnappedCoords(data.geometry.coordinates);
+    fitToLine(data.geometry.coordinates as [number, number][]);
+  } catch (e: any) {
+    alert(e?.message || String(e));
+  } finally {
+    setBusy(false);
   }
+}
 
   function fitToLine(coords: [number, number][]) {
     const map = mapRef.current!;
@@ -199,9 +207,41 @@ export default function App() {
     map.fitBounds(b, { padding: 40, duration: 400 });
   }
 
+  function clearTempOverlays() {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const emptyLine: GeoJSON.Feature = {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [] },
+      properties: {},
+    };
+    // Tøm stiplet “temp-line” og punkt-kilden “waypoints”
+    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
+}
+
+  function clearSourcesOnMap() {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const emptyLine: GeoJSON.Feature = {
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: [] },
+      properties: {},
+    };
+    const emptyFC: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: [],
+    };
+
+    (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
+    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
+    (map.getSource("waypoints") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyFC as any);
+}
   function clearAll() {
     setWaypoints([]);
     setSnappedCoords([]);
+    clearSourcesOnMap();
   }
 
   async function downloadGpx() {
@@ -213,7 +253,7 @@ export default function App() {
           ? new Date(startISO).toISOString()
           : new Date().toISOString();
 
-      const res = await fetch(`${API_BASE}/api/generate-gpx`, {
+      const res = await fetch(`/api/generate-gpx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

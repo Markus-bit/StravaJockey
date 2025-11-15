@@ -33,3 +33,47 @@ html, body, #root {
   font-size: 12px;
   opacity: 0.7;
 }
+
+/* Pace slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 160px;            /* adjust width as you like */
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* Track (Chrome/Safari) */
+input[type="range"]::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+
+/* Thumb (Chrome/Safari) */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  cursor: pointer;
+  margin-top: -6px; /* vertically center thumb over track */
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  cursor: pointer;
+}

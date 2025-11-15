@@ -21,15 +21,21 @@ function assertToken() {
   }
 }
 
+function formatPace(value: number) {
+  const minutes = Math.floor(value);
+  const seconds = Math.round((value - minutes) * 60);
+  const padded = seconds.toString().padStart(2, "0");
+  return `${minutes}:${padded} min/km`;
+}
+
 export default function App() {
   const mapRef = useRef<Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [waypoints, setWaypoints] = useState<LngLat[]>([]);
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
-  const [profile, setProfile] =
-    useState<"walking" | "cycling" | "driving">("walking");
-  const [paceSecPerKm, setPaceSecPerKm] = useState<number>(300); // 5:00
+  const [profile, setProfile] = useState<"walking" | "cycling" | "driving">("walking");
+  const [paceMinPerKm, setPaceMinPerKm] = useState<number>(5.0);
   const [spacingM, setSpacingM] = useState<number>(75);
   const [startISO, setStartISO] = useState<string>(
     new Date().toISOString().slice(0, 16) // yyyy-MM-ddTHH:mm
@@ -259,7 +265,7 @@ async function snapToRoad() {
         body: JSON.stringify({
           profile,
           spacingM,
-          paceSecPerKm,
+          paceSecPerKm: Math.round(paceMinPerKm * 60),
           points: waypoints,
           startTimeISO: iso,
           // elevation er av som default i backend
@@ -311,17 +317,17 @@ async function snapToRoad() {
             style={{ width: 80 }}
           />
         </label>
-        <label>
-          Pace (s/km):&nbsp;
-          <input
-            type="number"
-            value={paceSecPerKm}
-            min={120}
-            max={1200}
-            onChange={(e) => setPaceSecPerKm(Number(e.target.value))}
-            style={{ width: 80 }}
-          />
-        </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span>Pace: {formatPace(paceMinPerKm)}</span>
+            <input
+              type="range"
+              min={1}          // rask
+              max={15}          // rolig
+              step={0.1}
+              value={paceMinPerKm}
+              onChange={(e) => setPaceMinPerKm(Number(e.target.value))}
+            />
+          </label>
         <label>
           Start:&nbsp;
           <input
@@ -342,7 +348,6 @@ async function snapToRoad() {
       </div>
 
       <div className="map-container">
-        {/* Viktig: container må ha høyde via CSS (styles.css) */}
         <div id="map" ref={containerRef} />
       </div>
     </div>

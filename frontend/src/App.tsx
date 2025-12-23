@@ -321,8 +321,8 @@ async function snapToRoad() {
             <span>Pace: {formatPace(paceMinPerKm)}</span>
             <input
               type="range"
-              min={1}          // rask
-              max={15}          // rolig
+              min={1}
+              max={15}
               step={0.1}
               value={paceMinPerKm}
               onChange={(e) => setPaceMinPerKm(Number(e.target.value))}

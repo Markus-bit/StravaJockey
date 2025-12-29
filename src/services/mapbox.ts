@@ -11,6 +11,21 @@ const profileMap: Record<MatchProfile,string> = {
   driving: "driving"
 };
 
+const DIRECTIONS_MAX_POINTS = 25;
+const MAP_MATCH_MAX_POINTS = 100;
+
+function thinPoints(points: LngLat[], limit: number): LngLat[] {
+  if (points.length <= limit) return points;
+  const thinned: LngLat[] = [];
+  const lastIdx = points.length - 1;
+  for (let i = 0; i < limit; i++) {
+    const t = i / (limit - 1);
+    const idx = Math.round(t * lastIdx);
+    thinned.push(points[idx]);
+  }
+  return thinned;
+}
+
 // Directions: best for få waypoints (snap-to-road med routing)
 export async function directionsRoute(points: LngLat[], profile: MatchProfile, token: string): Promise<MatchedPoint[]> {
   if (points.length < 2) throw new Error("Need at least 2 points");
@@ -69,18 +84,31 @@ export async function mapMatch(points: LngLat[], profile: MatchProfile, token: s
 export async function snapToRoad(
   points: LngLat[], profile: MatchProfile, token: string, preferMatch = false
 ): Promise<MatchedPoint[]> {
-  if (preferMatch) {
-    try { return await mapMatch(points, profile, token); }
-    catch (e:any) {
+  const needsMapMatch = preferMatch || points.length > DIRECTIONS_MAX_POINTS;
+  let pointsForMatch = points;
+  if (points.length > MAP_MATCH_MAX_POINTS) {
+    logger.warn({ originalPoints: points.length }, "Too many points for Map Matching, thinning input");
+    pointsForMatch = thinPoints(points, MAP_MATCH_MAX_POINTS);
+  }
+  let pointsForDirections = points;
+  if (points.length > DIRECTIONS_MAX_POINTS) {
+    logger.warn({ originalPoints: points.length }, "Too many points for Directions, thinning input");
+    pointsForDirections = thinPoints(points, DIRECTIONS_MAX_POINTS);
+  }
+
+  if (needsMapMatch) {
+    try {
+      return await mapMatch(pointsForMatch, profile, token);
+    } catch (e: any) {
       logger.warn({ reason: e?.code || e?.message }, "Map Matching failed, falling back to Directions");
-      return directionsRoute(points, profile, token);
+      return directionsRoute(pointsForDirections, profile, token);
     }
   }
-  // Default: Directions (waypoints)
+
   try {
-    return await directionsRoute(points, profile, token);
-  } catch (e:any) {
+    return await directionsRoute(pointsForDirections, profile, token);
+  } catch (e: any) {
     logger.warn({ reason: e?.message }, "Directions failed, trying Map Matching");
-    return mapMatch(points, profile, token);
+    return mapMatch(pointsForMatch, profile, token);
   }
 }

@@ -3,9 +3,9 @@ import { z } from "zod";
 import { accumulateDistances } from "./domain/geo";
 import { snapToRoad } from "./services/mapbox";
 import { densifyLine } from "./services/densify";
-import { enrichElevation } from "./services/elevation";
 import { buildGpx } from "./services/gpx";
 import { generateTimestamps } from "./services/pace";
+import { enrichElevation } from "./services/elevation";
 
 const router = Router();
 
@@ -71,7 +71,7 @@ router.post("/generate-gpx", async (req, res) => {
     // 4) høyde
     const providerForThisRequest =
       parsed.includeElevation
-        ? (parsed.elevationProvider || (process.env.ELEVATION_PROVIDER as any) || "opentopodata")
+        ? (parsed.elevationProvider || (process.env.ELEVATION_PROVIDER as any) || "mapbox")
         : "none";
 
     const withEle = await enrichElevation(withDist, { provider: providerForThisRequest as any });

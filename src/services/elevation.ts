@@ -26,7 +26,6 @@ export async function enrichElevation(
   switch (provider) {
     case "opentopodata":
       return elevationOpenTopo(points);
-    // case "mapbox": // terrain-rgb implementation can be added later
     default:
       return elevationOpenTopo(points);
   }

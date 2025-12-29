@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import locateIcon from "./assets/my-location.png";
 
 // --- ENV ---
 // Vite proxy forwards '/api' -> http://localhost:4000 in dev, so we call relative paths.
@@ -41,6 +42,9 @@ export default function App() {
     new Date().toISOString().slice(0, 16) // yyyy-MM-ddTHH:mm
   );
   const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
+  const hasSnapCandidate = waypoints.length >= 2;
 
   // --- Init kart ---
   useEffect(() => {
@@ -53,6 +57,7 @@ export default function App() {
       style: "mapbox://styles/mapbox/streets-v12", // <- Viktig
       center: [10.75, 59.91] as LngLatLike, // Oslo
       zoom: 12,
+      attributionControl: false,
     });
 
     // nyttig for feilsøking
@@ -197,6 +202,11 @@ async function snapToRoad() {
     if (!res.ok) throw new Error(data?.error || "Route failed");
 
     setSnappedCoords(data.geometry.coordinates);
+    if (typeof data.distanceM === "number") {
+      setTotalDistanceKm(Number((data.distanceM / 1000).toFixed(2)));
+    } else {
+      setTotalDistanceKm(null);
+    }
     fitToLine(data.geometry.coordinates as [number, number][]);
   } catch (e: any) {
     alert(e?.message || String(e));
@@ -247,7 +257,31 @@ async function snapToRoad() {
   function clearAll() {
     setWaypoints([]);
     setSnappedCoords([]);
+    setTotalDistanceKm(null);
     clearSourcesOnMap();
+  }
+
+  function centerOnUser() {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!navigator.geolocation) {
+      alert("Geolocation ikke støttet i denne nettleseren");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { longitude, latitude } = pos.coords;
+        map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 14) });
+        setLocating(false);
+      },
+      (err) => {
+        const msg = err.message || "Kunne ikke hente posisjon";
+        alert(msg);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
   }
 
   async function downloadGpx() {
@@ -291,64 +325,102 @@ async function snapToRoad() {
 
   return (
     <div className="app">
-      <div className="toolbar">
-        <strong>StravaJockey (demo)</strong>
-        <span className="badge">Klikk i kartet for å legge til punkter</span>
-        <div className="spacer" />
-        <label>
-          Profil:&nbsp;
-          <select
-            value={profile}
-            onChange={(e) => setProfile(e.target.value as any)}
-          >
-            <option value="walking">Walking</option>
-            <option value="cycling">Cycling</option>
-            <option value="driving">Driving</option>
-          </select>
-        </label>
-        <label>
-          Spacing (m):&nbsp;
-          <input
-            type="number"
-            value={spacingM}
-            min={10}
-            max={500}
-            onChange={(e) => setSpacingM(Number(e.target.value))}
-            style={{ width: 80 }}
-          />
-        </label>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span>Pace: {formatPace(paceMinPerKm)}</span>
-            <input
-              type="range"
-              min={1}
-              max={15}
-              step={0.1}
-              value={paceMinPerKm}
-              onChange={(e) => setPaceMinPerKm(Number(e.target.value))}
-            />
-          </label>
-        <label>
-          Start:&nbsp;
-          <input
-            type="datetime-local"
-            value={startISO}
-            onChange={(e) => setStartISO(e.target.value)}
-          />
-        </label>
-        <button onClick={snapToRoad} disabled={busy}>
-          Snap to road
-        </button>
-        <button onClick={downloadGpx} disabled={busy}>
-          Download GPX
-        </button>
-        <button onClick={clearAll} disabled={busy}>
-          Clear
-        </button>
-      </div>
-
-      <div className="map-container">
-        <div id="map" ref={containerRef} />
+      <header className="app-header">
+        <strong className="app-logo">StravaJockey</strong>
+        <div className="header-actions">
+          <button type="button">Dashboard</button>
+          <button type="button">Activities</button>
+          <button type="button">Settings</button>
+        </div>
+      </header>
+      <div className="content">
+        <div className="left-column">
+          <section className="map-panel">
+            <div className="map-panel-header">
+              <h2>Map preview</h2>
+              <span className="map-header-tip">Click on the map to create your route</span>
+            </div>
+            <div className="map-container">
+              <div id="map" ref={containerRef} />
+              <button
+                className="locate-button"
+                onClick={centerOnUser}
+                disabled={locating}
+                title="Center map on your location"
+              >
+                <img src={locateIcon} alt="Locate" />
+              </button>
+              {hasSnapCandidate && (
+                <button
+                  className="map-action map-action--snap"
+                  onClick={snapToRoad}
+                  disabled={busy}
+                >
+                  Snap to road
+                </button>
+              )}
+            </div>
+          </section>
+          <section className="stats-panel">
+            <h2>Route stats</h2>
+            <div className="stats-scroll" />
+          </section>
+        </div>
+        <section className="controls-panel">
+          <h2>Route setup</h2>
+          <div className="form-grid">
+            <label>
+              <span>Profil</span>
+              <select value={profile} onChange={(e) => setProfile(e.target.value as any)}>
+                <option value="walking">Walking</option>
+                <option value="cycling">Cycling</option>
+                <option value="driving">Driving</option>
+              </select>
+            </label>
+            <label>
+              <span>Spacing (m)</span>
+              <input
+                type="number"
+                value={spacingM}
+                min={10}
+                max={500}
+                onChange={(e) => setSpacingM(Number(e.target.value))}
+              />
+            </label>
+            <label className="pace-control">
+              <span>Pace: {formatPace(paceMinPerKm)}</span>
+              <input
+                type="range"
+                min={1}
+                max={15}
+                step={0.1}
+                value={paceMinPerKm}
+                onChange={(e) => setPaceMinPerKm(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              <span>Start</span>
+              <input
+                type="datetime-local"
+                value={startISO}
+                onChange={(e) => setStartISO(e.target.value)}
+              />
+            </label>
+          </div>
+          <div className="action-row">
+            <button onClick={downloadGpx} disabled={busy}>
+              Download GPX
+            </button>
+            <button onClick={clearAll} disabled={busy}>
+              Clear
+            </button>
+          </div>
+          {totalDistanceKm !== null && (
+            <div className="distance-card">
+              Total distance: <strong>{totalDistanceKm} km</strong>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

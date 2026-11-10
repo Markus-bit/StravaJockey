@@ -12,6 +12,12 @@ const router = Router();
 const PointsSchema = z.array(z.object({ lng: z.number(), lat: z.number() })).min(2);
 const ProfileSchema = z.enum(["walking","cycling","driving"]);
 
+function getMapboxToken(): string {
+  const token = process.env.MAPBOX_TOKEN;
+  if (!token) throw new Error("MAPBOX_TOKEN is not set on the server. Add it to .env and restart.");
+  return token;
+}
+
 router.get("/health", (_req,res)=>res.json({ok:true}));
 
 // ---- NY: få snappet rute (geojson + distanse/duration-anslag)
@@ -24,7 +30,7 @@ router.post("/route", async (req, res) => {
       spacingM: z.number().min(10).max(500).default(25)
     }).parse(req.body);
 
-    const token = process.env.MAPBOX_TOKEN!;
+    const token = getMapboxToken();
     const snapped = await snapToRoad(body.points, body.profile, token, body.preferMatch);
 
     // densifiser for jevn høyde/tidsprofil
@@ -57,10 +63,10 @@ router.post("/generate-gpx", async (req, res) => {
       preferMatch: z.boolean().optional(),
       spacingM: z.number().min(10).max(500).default(25),
       includeElevation: z.boolean().default(false),
-      elevationProvider: z.enum(["opentopodata","mapbox"]).optional()
+      elevationProvider: z.enum(["opentopodata"]).optional()
     }).parse(req.body);
 
-    const token = process.env.MAPBOX_TOKEN!;
+    const token = getMapboxToken();
     // 1) snap (Directions default)
     const snapped = await snapToRoad(parsed.points, parsed.profile, token, parsed.preferMatch);
     // 2) densifiser
@@ -69,12 +75,9 @@ router.post("/generate-gpx", async (req, res) => {
     const dists = accumulateDistances(dense);
     const withDist = dense.map((p,i)=> ({ ...p, distanceOnRouteM: dists[i] }));
     // 4) høyde
-    const providerForThisRequest =
-      parsed.includeElevation
-        ? (parsed.elevationProvider || (process.env.ELEVATION_PROVIDER as any) || "mapbox")
-        : "none";
-
-    const withEle = await enrichElevation(withDist, { provider: providerForThisRequest as any });
+    const withEle = await enrichElevation(withDist, {
+      provider: parsed.includeElevation ? (parsed.elevationProvider || "opentopodata") : "none"
+    });
     // 5) timestamps
     const withTime = generateTimestamps({
       points: withEle,

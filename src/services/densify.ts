@@ -11,7 +11,8 @@ export function densifyLine(points: LngLat[], spacingM = 25): LngLat[] {
     const a = points[i-1], b = points[i];
     const d = haversine(a,b);
     if (d <= spacingM) { out.push(b); continue; }
-    const n = Math.floor(d/spacingM);
+    // only strictly interior points; b itself is pushed below
+    const n = Math.ceil(d/spacingM) - 1;
     for (let k=1;k<=n;k++){
       const t = (k*spacingM)/d;
       out.push({ lng: lerp(a.lng,b.lng,t), lat: lerp(a.lat,b.lat,t) });

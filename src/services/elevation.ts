@@ -14,7 +14,7 @@ function chunk<T>(arr: T[], size: number) {
 
 export async function enrichElevation(
   points: MatchedPoint[],
-  opts?: { provider?: "none" | "opentopodata" | "mapbox" }
+  opts?: { provider?: "none" | "opentopodata" }
 ): Promise<MatchedPoint[]> {
   const provider = (opts?.provider || process.env.ELEVATION_PROVIDER || "opentopodata").toLowerCase();
 
@@ -22,13 +22,10 @@ export async function enrichElevation(
     // Skip elevation entirely
     return points.map(p => ({ ...p, elevationM: null }));
   }
-
-  switch (provider) {
-    case "opentopodata":
-      return elevationOpenTopo(points);
-    default:
-      return elevationOpenTopo(points);
+  if (provider !== "opentopodata") {
+    throw new Error(`Unknown elevation provider "${provider}" (supported: opentopodata, none)`);
   }
+  return elevationOpenTopo(points);
 }
 
 // Exponential backoff for OpenTopoData (handles 429/503)

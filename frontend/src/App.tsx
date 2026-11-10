@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
+import RunDetails from "./RunDetails";
+import {
+  type ActivitySettings, type Sport,
+  defaultActivityName, initialSettings, startTimeISO,
+} from "./activity";
+
+// Punktavstand i genererte spor (meter). Samme verdi for forhåndsvisning og GPX
+// slik at høydemeter i statistikken stemmer med fila.
+const SPACING_M = 25;
+const routingProfile = (sport: Sport) => (sport === "bike" ? "cycling" : "walking");
 
 // --- ENV ---
 // Vite proxy forwards '/api' -> http://localhost:4000 in dev, so we call relative paths.
@@ -21,22 +31,9 @@ function assertToken() {
   }
 }
 
-// Local "yyyy-MM-ddTHH:mm" for <input type="datetime-local"> (toISOString would give UTC)
-function toLocalInputValue(d: Date) {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function gpxFileName(name: string) {
   const base = name.replace(/[\\/:*?"<>|]/g, "").trim();
   return `${base || "route"}.gpx`;
-}
-
-function formatPace(value: number) {
-  const minutes = Math.floor(value);
-  const seconds = Math.round((value - minutes) * 60);
-  const padded = seconds.toString().padStart(2, "0");
-  return `${minutes}:${padded} min/km`;
 }
 
 export default function App() {
@@ -47,14 +44,14 @@ export default function App() {
   // Waypoints behind the currently shown snapped route (waypoints are cleared after snapping)
   const [routePoints, setRoutePoints] = useState<LngLat[]>([]);
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
-  const [activityName, setActivityName] = useState<string>("");
-  const [profile, setProfile] = useState<"walking" | "cycling" | "driving">("walking");
-  const [paceMinPerKm, setPaceMinPerKm] = useState<number>(5.0);
-  const [spacingM, setSpacingM] = useState<number>(75);
-  const [startISO, setStartISO] = useState<string>(() => toLocalInputValue(new Date()));
+  const [settings, setSettings] = useState<ActivitySettings>(initialSettings);
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
+  const [distanceM, setDistanceM] = useState<number | null>(null);
+  const [elevationGainM, setElevationGainM] = useState<number | null>(null);
+  const [elevationLoading, setElevationLoading] = useState(false);
+  // Øker for hver ny rute, så et sent høydesvar for en gammel rute ignoreres
+  const routeRequestId = useRef(0);
   const hasSnapCandidate = waypoints.length >= 2;
 
   // --- Init kart ---
@@ -189,41 +186,66 @@ export default function App() {
     };
   }
 
-async function snapToRoad() {
+async function postJson(url: string, body: unknown) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    let msg = errText;
+    try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
+    throw new Error(msg);
+  }
+  return res;
+}
+
+function snapToRoad() {
   if (waypoints.length < 2) return alert("Trenger minst to punkter");
+  const pts = [...waypoints];
+  // Skjul gamle punkter og stiplet linje umiddelbart i UI
+  clearTempOverlays();
+  setWaypoints([]); // trigger også useEffect som holder kildene i sync
+  return snapPoints(pts, settings.sport);
+}
+
+// Hent snappet rute (rask), og deretter høydemeter i bakgrunnen (tregt: ~1 s per 100 punkter)
+async function snapPoints(pts: LngLat[], sport: Sport) {
+  const id = ++routeRequestId.current;
+  const body = { profile: routingProfile(sport), spacingM: SPACING_M, points: pts };
   setBusy(true);
   try {
-    // Ta vare på punktene som skal sendes
-    const pts = [...waypoints];
-
-    // Skjul gamle punkter og stiplet linje umiddelbart i UI
-    clearTempOverlays();
-    setWaypoints([]); // trigger også useEffect som holder kildene i sync
-
-    const res = await fetch(`/api/route`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        profile,
-        spacingM,
-        points: pts,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Route failed");
-
+    const data = await (await postJson(`/api/route`, body)).json();
+    if (id !== routeRequestId.current) return;
     setSnappedCoords(data.geometry.coordinates);
     setRoutePoints(pts);
-    if (typeof data.distanceM === "number") {
-      setTotalDistanceKm(Number((data.distanceM / 1000).toFixed(2)));
-    } else {
-      setTotalDistanceKm(null);
-    }
+    setDistanceM(typeof data.distanceM === "number" ? data.distanceM : null);
+    setElevationGainM(null);
     fitToLine(data.geometry.coordinates as [number, number][]);
-  } catch (e: any) {
-    alert(e?.message || String(e));
+  } catch (e) {
+    alert(e instanceof Error ? e.message : String(e));
+    return;
   } finally {
     setBusy(false);
+  }
+
+  setElevationLoading(true);
+  try {
+    const data = await (await postJson(`/api/route`, { ...body, includeElevation: true })).json();
+    if (id === routeRequestId.current) setElevationGainM(data.elevationGainM ?? null);
+  } catch {
+    /* høydemeter er valgfritt; vis "–" */
+  } finally {
+    if (id === routeRequestId.current) setElevationLoading(false);
+  }
+}
+
+function updateSettings(patch: Partial<ActivitySettings>) {
+  setSettings((prev) => ({ ...prev, ...patch }));
+  // Run og Bike bruker ulike veinett (gangstier vs sykkelveier): snapp ruten på nytt
+  if (patch.sport && patch.sport !== settings.sport && routePoints.length >= 2 && waypoints.length < 2) {
+    snapPoints(routePoints, patch.sport);
   }
 }
 
@@ -270,7 +292,10 @@ async function snapToRoad() {
     setWaypoints([]);
     setRoutePoints([]);
     setSnappedCoords([]);
-    setTotalDistanceKm(null);
+    setDistanceM(null);
+    setElevationGainM(null);
+    setElevationLoading(false);
+    routeRequestId.current++;
     clearSourcesOnMap();
   }
 
@@ -301,41 +326,34 @@ async function snapToRoad() {
     // Prefer newly clicked points; otherwise use the points behind the snapped route
     const pts = waypoints.length >= 2 ? waypoints : routePoints;
     if (pts.length < 2) return alert("Trenger minst to punkter");
+    const s = settings;
+    const name = s.name.trim() || defaultActivityName(s.sport, s.hour);
     setBusy(true);
     try {
-      const iso =
-        startISO.length === 16
-          ? new Date(startISO).toISOString()
-          : new Date().toISOString();
-
-      const res = await fetch(`/api/generate-gpx`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile,
-          spacingM,
-          paceSecPerKm: Math.round(paceMinPerKm * 60),
-          name: activityName.trim() || undefined,
-          points: pts,
-          startTimeISO: iso,
-          // elevation er av som default i backend
-        }),
+      const res = await postJson(`/api/generate-gpx`, {
+        profile: routingProfile(s.sport),
+        activityType: s.sport === "bike" ? "cycling" : "running",
+        spacingM: SPACING_M,
+        points: pts,
+        paceSecPerKm: s.paceSecPerKm,
+        paceVariability: s.paceVariabilityPct / 100,
+        heartRate: s.hrEnabled
+          ? { avgBpm: s.hrAvgBpm, variability: s.hrVariabilityPct / 100 }
+          : undefined,
+        name,
+        description: s.description.trim() || undefined,
+        startTimeISO: startTimeISO(s),
+        includeElevation: true,
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        let msg = errText;
-        try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
-        throw new Error(msg);
-      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = gpxFileName(activityName);
+      a.download = gpxFileName(name);
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert(e?.message || String(e));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -379,76 +397,17 @@ async function snapToRoad() {
               )}
             </div>
           </section>
-          <section className="stats-panel">
-            <h2>Route stats</h2>
-            <div className="stats-scroll" />
-          </section>
         </div>
-        <section className="controls-panel">
-          <h2>Route setup</h2>
-          <div className="form-grid">
-            <label>
-              <span>Name</span>
-              <input
-                type="text"
-                value={activityName}
-                maxLength={200}
-                placeholder="Morning Run"
-                onChange={(e) => setActivityName(e.target.value)}
-              />
-            </label>
-            <label>
-              <span>Profil</span>
-              <select value={profile} onChange={(e) => setProfile(e.target.value as any)}>
-                <option value="walking">Walking</option>
-                <option value="cycling">Cycling</option>
-                <option value="driving">Driving</option>
-              </select>
-            </label>
-            <label>
-              <span>Spacing (m)</span>
-              <input
-                type="number"
-                value={spacingM}
-                min={10}
-                max={500}
-                onChange={(e) => setSpacingM(Number(e.target.value))}
-              />
-            </label>
-            <label className="pace-control">
-              <span>Pace: {formatPace(paceMinPerKm)}</span>
-              <input
-                type="range"
-                min={1}
-                max={15}
-                step={0.1}
-                value={paceMinPerKm}
-                onChange={(e) => setPaceMinPerKm(Number(e.target.value))}
-              />
-            </label>
-            <label>
-              <span>Start</span>
-              <input
-                type="datetime-local"
-                value={startISO}
-                onChange={(e) => setStartISO(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="action-row">
-            <button onClick={downloadGpx} disabled={busy}>
-              Download GPX
-            </button>
-            <button onClick={clearAll} disabled={busy}>
-              Clear
-            </button>
-          </div>
-          {totalDistanceKm !== null && (
-            <div className="distance-card">
-              Total distance: <strong>{totalDistanceKm} km</strong>
-            </div>
-          )}
-        </section>
+        <RunDetails
+          settings={settings}
+          onChange={updateSettings}
+          distanceM={distanceM}
+          elevationGainM={elevationGainM}
+          elevationLoading={elevationLoading}
+          busy={busy}
+          onDownload={downloadGpx}
+          onClear={clearAll}
+        />
       </div>
     </div>
   );

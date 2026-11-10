@@ -3,9 +3,12 @@ import { z } from "zod";
 import { accumulateDistances } from "./domain/geo";
 import { snapToRoad } from "./services/mapbox";
 import { densifyLine } from "./services/densify";
-import { buildGpx } from "./services/gpx";
+import { buildGpx, type GpxActivityType } from "./services/gpx";
 import { generateTimestamps } from "./services/pace";
-import { enrichElevation } from "./services/elevation";
+import { enrichElevation, elevationGain } from "./services/elevation";
+import { generateHeartRate } from "./services/heartrate";
+import { logger } from "./logger";
+import type { MatchedPoint } from "./domain/types";
 
 const router = Router();
 
@@ -32,7 +35,8 @@ router.post("/route", async (req, res) => {
       points: PointsSchema,
       profile: ProfileSchema.default("walking"),
       preferMatch: z.boolean().optional(), // sett true hvis klient sender tett spor
-      spacingM: z.number().min(10).max(500).default(25)
+      spacingM: z.number().min(10).max(500).default(25),
+      includeElevation: z.boolean().default(false)
     }).parse(req.body);
 
     const token = getMapboxToken();
@@ -44,33 +48,53 @@ router.post("/route", async (req, res) => {
     const dists = accumulateDistances(dense);
     const total = dists[dists.length-1];
 
+    // høydemeter er "nice to have" for statistikken: feil her skal ikke stoppe ruten
+    let elevationGainM: number | null = null;
+    if (body.includeElevation) {
+      try {
+        const gain = elevationGain(await enrichElevation(dense));
+        elevationGainM = gain === null ? null : Math.round(gain);
+      } catch (e:any) {
+        logger.warn({ err: e?.message }, "Elevation lookup failed for route stats");
+      }
+    }
+
     res.json({
       geometry: { type: "LineString", coordinates: dense.map(p=>[p.lng,p.lat]) },
-      distanceM: Math.round(total)
+      distanceM: Math.round(total),
+      elevationGainM
     });
   } catch (e:any) {
     res.status(400).json({ error: e?.message || "Route failed" });
   }
 });
 
-// ---- eksisterende full pipeline: generer GPX fra waypoints
+// ---- full pipeline: waypoints -> GPX
+const GpxRequestSchema = z.object({
+  points: PointsSchema,
+  profile: ProfileSchema.default("walking"),
+  activityType: z.enum(["running","cycling"]).optional(),
+  paceSecPerKm: z.number().positive(),
+  paceVariability: z.number().min(0).max(0.5).default(0),
+  heartRate: z.object({
+    avgBpm: z.number().min(40).max(220),
+    variability: z.number().min(0).max(0.3).default(0)
+  }).optional(),
+  name: z.string().trim().max(200).optional(),
+  description: z.string().trim().max(2000).optional(),
+  startTimeISO: z.string().datetime().optional(),
+  addPauses: z.boolean().optional(),
+  pauseEveryKm: z.number().optional(),
+  pauseSeconds: z.number().optional(),
+  preferMatch: z.boolean().optional(),
+  spacingM: z.number().min(10).max(500).default(25),
+  includeElevation: z.boolean().default(false),
+  elevationProvider: z.enum(["opentopodata"]).optional()
+});
+
 router.post("/generate-gpx", async (req, res) => {
   try {
-    const parsed = z.object({
-      points: PointsSchema,
-      profile: ProfileSchema.default("walking"),
-      paceSecPerKm: z.number().positive(),
-      name: z.string().trim().max(200).optional(),
-      startTimeISO: z.string().datetime().optional(),
-      addPauses: z.boolean().optional(),
-      pauseEveryKm: z.number().optional(),
-      pauseSeconds: z.number().optional(),
-      jitterSecondsPerKm: z.number().optional(),
-      preferMatch: z.boolean().optional(),
-      spacingM: z.number().min(10).max(500).default(25),
-      includeElevation: z.boolean().default(false),
-      elevationProvider: z.enum(["opentopodata"]).optional()
-    }).parse(req.body);
+    const parsed = GpxRequestSchema.parse(req.body);
 
     const token = getMapboxToken();
     // 1) snap (Directions default)
@@ -80,23 +104,33 @@ router.post("/generate-gpx", async (req, res) => {
     // 3) distanse
     const dists = accumulateDistances(dense);
     const withDist = dense.map((p,i)=> ({ ...p, distanceOnRouteM: dists[i] }));
-    // 4) høyde
-    const withEle = await enrichElevation(withDist, {
-      provider: parsed.includeElevation ? (parsed.elevationProvider || "opentopodata") : "none"
-    });
+    // 4) høyde (hvis oppslaget feiler lager vi fila uten høyde i stedet for å feile)
+    let withEle: MatchedPoint[] = withDist;
+    if (parsed.includeElevation) {
+      try {
+        withEle = await enrichElevation(withDist, { provider: parsed.elevationProvider || "opentopodata" });
+      } catch (e:any) {
+        logger.warn({ err: e?.message }, "Elevation lookup failed, writing GPX without elevation");
+      }
+    }
     // 5) timestamps
     const withTime = generateTimestamps({
       points: withEle,
       paceSecPerKm: parsed.paceSecPerKm,
       startTimeISO: parsed.startTimeISO || new Date().toISOString(),
+      paceVariability: parsed.paceVariability,
       addPauses: parsed.addPauses,
       pauseEveryKm: parsed.pauseEveryKm,
-      pauseSeconds: parsed.pauseSeconds,
-      jitterSecondsPerKm: parsed.jitterSecondsPerKm
+      pauseSeconds: parsed.pauseSeconds
     });
-    // 6) GPX
+    // 6) puls
+    const withHr = parsed.heartRate
+      ? generateHeartRate({ points: withTime, avgBpm: parsed.heartRate.avgBpm, variability: parsed.heartRate.variability })
+      : withTime;
+    // 7) GPX
     const activityName = parsed.name || "Generated Route";
-    const gpx = buildGpx(withTime, activityName);
+    const type: GpxActivityType = parsed.activityType || (parsed.profile === "cycling" ? "cycling" : "running");
+    const gpx = buildGpx(withHr, { name: activityName, description: parsed.description, type });
     const fileName = toFileName(activityName);
     res.setHeader("Content-Type","application/gpx+xml");
     // ASCII fallback + RFC 5987 UTF-8 name (Node rejects raw non-ASCII in headers)

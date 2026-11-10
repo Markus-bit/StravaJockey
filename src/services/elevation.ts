@@ -3,6 +3,10 @@ import { MatchedPoint } from "../domain/types";
 import { logger } from "../logger";
 import { accumulateDistances } from "../domain/geo";
 
+if (process.env.ELEVATION_PROVIDER) {
+  logger.warn("ELEVATION_PROVIDER in .env is no longer used and can be removed");
+}
+
 // Public OpenTopoData API limits: max 100 locations per request, max 1 request/second.
 const BATCH_SIZE = 100;
 const MIN_INTERVAL_MS = 1100;
@@ -30,7 +34,9 @@ export async function enrichElevation(
   points: MatchedPoint[],
   opts?: { provider?: "none" | "opentopodata" }
 ): Promise<MatchedPoint[]> {
-  const provider = (opts?.provider || process.env.ELEVATION_PROVIDER || "opentopodata").toLowerCase();
+  // Callers decide whether they want elevation (includeElevation); no hidden .env override,
+  // so route stats and GPX download always behave the same.
+  const provider = (opts?.provider || "opentopodata").toLowerCase();
 
   if (provider === "none") {
     // Skip elevation entirely
@@ -160,7 +166,10 @@ async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]
   }
 
   // 2) look them up, and fill gaps (points with no data, e.g. lakes/fjords) from neighbours
-  const values = fillGaps(await lookup(samples));
+  const raw = await lookup(samples);
+  const missing = raw.filter(v => v === null).length;
+  logger.info({ samples: raw.length, withoutData: missing }, "Elevation lookup done");
+  const values = fillGaps(raw);
 
   // 3) interpolate an elevation for every point by its distance along the route
   let j = 0;

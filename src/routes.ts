@@ -53,7 +53,7 @@ router.post("/route", async (req, res) => {
     let elevationError: string | null = null;
     if (body.includeElevation) {
       try {
-        const gain = elevationGain(await enrichElevation(dense));
+        const gain = elevationGain(await enrichElevation(dense, { provider: "opentopodata" }));
         if (gain === null) elevationError = "No elevation data for this area (the elevation dataset covers Europe only).";
         else elevationGainM = Math.round(gain);
       } catch (e:any) {

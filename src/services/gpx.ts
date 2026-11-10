@@ -11,6 +11,9 @@ export function buildGpx(points: MatchedPoint[], name = "Generated Route"): stri
       "xsi:schemaLocation":
         "http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd"
     })
+    .ele("metadata")
+      .ele("name").txt(name).up()
+    .up()
     .ele("trk")
       .ele("name").txt(name).up()
       .ele("trkseg");

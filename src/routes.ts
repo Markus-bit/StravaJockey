@@ -12,6 +12,11 @@ const router = Router();
 const PointsSchema = z.array(z.object({ lng: z.number(), lat: z.number() })).min(2);
 const ProfileSchema = z.enum(["walking","cycling","driving"]);
 
+function toFileName(name: string): string {
+  const base = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, "").trim() || "route";
+  return `${base}.gpx`;
+}
+
 function getMapboxToken(): string {
   const token = process.env.MAPBOX_TOKEN;
   if (!token) throw new Error("MAPBOX_TOKEN is not set on the server. Add it to .env and restart.");
@@ -55,6 +60,7 @@ router.post("/generate-gpx", async (req, res) => {
       points: PointsSchema,
       profile: ProfileSchema.default("walking"),
       paceSecPerKm: z.number().positive(),
+      name: z.string().trim().max(200).optional(),
       startTimeISO: z.string().datetime().optional(),
       addPauses: z.boolean().optional(),
       pauseEveryKm: z.number().optional(),
@@ -89,9 +95,15 @@ router.post("/generate-gpx", async (req, res) => {
       jitterSecondsPerKm: parsed.jitterSecondsPerKm
     });
     // 6) GPX
-    const gpx = buildGpx(withTime, "Generated Route");
+    const activityName = parsed.name || "Generated Route";
+    const gpx = buildGpx(withTime, activityName);
+    const fileName = toFileName(activityName);
     res.setHeader("Content-Type","application/gpx+xml");
-    res.setHeader("Content-Disposition","attachment; filename=route.gpx");
+    // ASCII fallback + RFC 5987 UTF-8 name (Node rejects raw non-ASCII in headers)
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${fileName.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
+    );
     res.send(gpx);
   } catch (e:any) {
     res.status(400).json({ error: e?.message || "Generate GPX failed" });

@@ -27,6 +27,11 @@ function toLocalInputValue(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function gpxFileName(name: string) {
+  const base = name.replace(/[\\/:*?"<>|]/g, "").trim();
+  return `${base || "route"}.gpx`;
+}
+
 function formatPace(value: number) {
   const minutes = Math.floor(value);
   const seconds = Math.round((value - minutes) * 60);
@@ -42,6 +47,7 @@ export default function App() {
   // Waypoints behind the currently shown snapped route (waypoints are cleared after snapping)
   const [routePoints, setRoutePoints] = useState<LngLat[]>([]);
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
+  const [activityName, setActivityName] = useState<string>("");
   const [profile, setProfile] = useState<"walking" | "cycling" | "driving">("walking");
   const [paceMinPerKm, setPaceMinPerKm] = useState<number>(5.0);
   const [spacingM, setSpacingM] = useState<number>(75);
@@ -309,6 +315,7 @@ async function snapToRoad() {
           profile,
           spacingM,
           paceSecPerKm: Math.round(paceMinPerKm * 60),
+          name: activityName.trim() || undefined,
           points: pts,
           startTimeISO: iso,
           // elevation er av som default i backend
@@ -324,7 +331,7 @@ async function snapToRoad() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "route.gpx";
+      a.download = gpxFileName(activityName);
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
@@ -380,6 +387,16 @@ async function snapToRoad() {
         <section className="controls-panel">
           <h2>Route setup</h2>
           <div className="form-grid">
+            <label>
+              <span>Name</span>
+              <input
+                type="text"
+                value={activityName}
+                maxLength={200}
+                placeholder="Morning Run"
+                onChange={(e) => setActivityName(e.target.value)}
+              />
+            </label>
             <label>
               <span>Profil</span>
               <select value={profile} onChange={(e) => setProfile(e.target.value as any)}>

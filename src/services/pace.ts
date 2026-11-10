@@ -21,14 +21,14 @@ export function generateTimestamps(opts: {
   } = opts;
 
   const speedMps = 1000 / paceSecPerKm; // m/s
-  let baseStart = new Date(startTimeISO);
-  let lastTime = new Date(baseStart);
+  // exact elapsed time in ms; rounding per segment would add up to a slower pace
+  let lastMs = new Date(startTimeISO).getTime();
 
   let lastKmMarker = 0; // for pauser hver X km
 
   const out = points.map((p, i) => {
     if (i === 0) {
-      return { ...p, timeISO: lastTime.toISOString() };
+      return { ...p, timeISO: new Date(lastMs).toISOString() };
     }
 
     const prev = points[i-1];
@@ -43,18 +43,18 @@ export function generateTimestamps(opts: {
 
     const segSec = clamp(idealSec + (jitter * (segDist/1000)), Math.max(idealSec*0.5, 0), idealSec*1.5);
 
-    lastTime = new Date(lastTime.getTime() + Math.round(segSec)*1000);
+    lastMs += segSec * 1000;
 
     // Pause?
     if (addPauses && pauseEveryKm > 0) {
       const crossed = Math.floor(kmHere / pauseEveryKm);
       if (crossed > Math.floor(lastKmMarker / pauseEveryKm)) {
-        lastTime = new Date(lastTime.getTime() + (pauseSeconds*1000));
+        lastMs += pauseSeconds * 1000;
       }
       lastKmMarker = kmHere;
     }
 
-    return { ...p, timeISO: lastTime.toISOString() };
+    return { ...p, timeISO: new Date(Math.round(lastMs)).toISOString() };
   });
 
   return out;

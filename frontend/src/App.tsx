@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import locateIcon from "./assets/my-location.png";
 
 // --- ENV ---
@@ -22,6 +21,12 @@ function assertToken() {
   }
 }
 
+// Local "yyyy-MM-ddTHH:mm" for <input type="datetime-local"> (toISOString would give UTC)
+function toLocalInputValue(d: Date) {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function formatPace(value: number) {
   const minutes = Math.floor(value);
   const seconds = Math.round((value - minutes) * 60);
@@ -34,13 +39,13 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [waypoints, setWaypoints] = useState<LngLat[]>([]);
+  // Waypoints behind the currently shown snapped route (waypoints are cleared after snapping)
+  const [routePoints, setRoutePoints] = useState<LngLat[]>([]);
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
   const [profile, setProfile] = useState<"walking" | "cycling" | "driving">("walking");
   const [paceMinPerKm, setPaceMinPerKm] = useState<number>(5.0);
   const [spacingM, setSpacingM] = useState<number>(75);
-  const [startISO, setStartISO] = useState<string>(
-    new Date().toISOString().slice(0, 16) // yyyy-MM-ddTHH:mm
-  );
+  const [startISO, setStartISO] = useState<string>(() => toLocalInputValue(new Date()));
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
   const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
@@ -202,6 +207,7 @@ async function snapToRoad() {
     if (!res.ok) throw new Error(data?.error || "Route failed");
 
     setSnappedCoords(data.geometry.coordinates);
+    setRoutePoints(pts);
     if (typeof data.distanceM === "number") {
       setTotalDistanceKm(Number((data.distanceM / 1000).toFixed(2)));
     } else {
@@ -232,7 +238,7 @@ async function snapToRoad() {
       geometry: { type: "LineString", coordinates: [] },
       properties: {},
     };
-    // Tøm stiplet “temp-line” og punkt-kilden “waypoints”
+    // Tøm stiplet “temp-line” (waypoints-kilden tømmes via setWaypoints([]))
     (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
 }
 
@@ -256,6 +262,7 @@ async function snapToRoad() {
 }
   function clearAll() {
     setWaypoints([]);
+    setRoutePoints([]);
     setSnappedCoords([]);
     setTotalDistanceKm(null);
     clearSourcesOnMap();
@@ -285,7 +292,9 @@ async function snapToRoad() {
   }
 
   async function downloadGpx() {
-    if (waypoints.length < 2) return alert("Trenger minst to punkter");
+    // Prefer newly clicked points; otherwise use the points behind the snapped route
+    const pts = waypoints.length >= 2 ? waypoints : routePoints;
+    if (pts.length < 2) return alert("Trenger minst to punkter");
     setBusy(true);
     try {
       const iso =
@@ -300,14 +309,16 @@ async function snapToRoad() {
           profile,
           spacingM,
           paceSecPerKm: Math.round(paceMinPerKm * 60),
-          points: waypoints,
+          points: pts,
           startTimeISO: iso,
           // elevation er av som default i backend
         }),
       });
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(errText);
+        let msg = errText;
+        try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
+        throw new Error(msg);
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -343,7 +354,7 @@ async function snapToRoad() {
             <div className="map-container">
               <div id="map" ref={containerRef} />
               <button
-                className="locate-button"
+                className={`locate-button${locating ? " locating" : ""}`}
                 onClick={centerOnUser}
                 disabled={locating}
                 title="Center map on your location"

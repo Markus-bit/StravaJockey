@@ -46,6 +46,7 @@ export default function App() {
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
   const [settings, setSettings] = useState<ActivitySettings>(initialSettings);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [distanceM, setDistanceM] = useState<number | null>(null);
   const [elevationGainM, setElevationGainM] = useState<number | null>(null);
@@ -329,6 +330,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     const s = settings;
     const name = s.name.trim() || defaultActivityName(s.sport, s.hour);
     setBusy(true);
+    setDownloading(true);
     try {
       const res = await postJson(`/api/generate-gpx`, {
         profile: routingProfile(s.sport),
@@ -356,6 +358,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      setDownloading(false);
     }
   }
 
@@ -405,6 +408,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           elevationGainM={elevationGainM}
           elevationLoading={elevationLoading}
           busy={busy}
+          downloading={downloading}
           onDownload={downloadGpx}
           onClear={clearAll}
         />

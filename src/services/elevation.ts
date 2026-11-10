@@ -1,10 +1,15 @@
 import axios from "axios";
 import { MatchedPoint } from "../domain/types";
 import { logger } from "../logger";
+import { accumulateDistances } from "../domain/geo";
 
 // Public OpenTopoData API limits: max 100 locations per request, max 1 request/second.
 const BATCH_SIZE = 100;
 const MIN_INTERVAL_MS = 1100;
+// Elevation is sampled along the route at most this many times (≈ 20 requests ≈ 20 s),
+// then interpolated for every GPS point. Short routes keep one sample per 25 m.
+const MAX_SAMPLES = 2000;
+const MIN_SAMPLE_SPACING_M = 25;
 
 // Simple sleep helper
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
@@ -72,22 +77,100 @@ async function getOpenTopoBatch(locations: string, attempt = 1): Promise<any> {
   }
 }
 
-async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]> {
-  const missing = [...new Set(points.map(key))].filter(k => !cache.has(k));
+// ---- Request queue shared by all callers, so concurrent lookups (route stats + GPX
+// download) never exceed the rate limit or fetch the same location twice.
+let queue: Promise<unknown> = Promise.resolve();
+let lastRequestAt = 0;
+const inflight = new Map<string, Promise<void>>();
 
-  let first = true;
-  for (const group of chunk(missing, BATCH_SIZE)) {
-    if (!first) await sleep(MIN_INTERVAL_MS);
-    first = false;
+function scheduleBatch(keys: string[], abort: { failed: boolean }): Promise<void> {
+  const run = async () => {
+    if (abort.failed) throw new Error("Elevation lookup aborted after an earlier failure");
+    const wait = lastRequestAt + MIN_INTERVAL_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    try {
+      const res = await getOpenTopoBatch(keys.join("|"));
+      const results = res.data?.results || [];
+      if (cache.size + keys.length > CACHE_MAX) cache.clear();
+      keys.forEach((k, i) => {
+        const e = results[i]?.elevation;
+        cache.set(k, typeof e === "number" ? e : null);
+      });
+    } catch (e) {
+      abort.failed = true;
+      throw e;
+    } finally {
+      lastRequestAt = Date.now();
+    }
+  };
+  const p = queue.then(run, run);
+  queue = p.catch(() => {});
+  return p;
+}
 
-    const res = await getOpenTopoBatch(group.join("|"));
-    const results = res.data?.results || [];
-    if (cache.size + group.length > CACHE_MAX) cache.clear();
-    group.forEach((k, i) => {
-      const e = results[i]?.elevation;
-      cache.set(k, typeof e === "number" ? e : null);
-    });
+async function lookup(locations: { lat: number; lng: number }[]): Promise<(number | null)[]> {
+  const keys = locations.map(key);
+  const waitFor = new Set<Promise<void>>();
+  const missing: string[] = [];
+  for (const k of new Set(keys)) {
+    if (cache.has(k)) continue;
+    const pending = inflight.get(k);
+    if (pending) waitFor.add(pending);
+    else missing.push(k);
   }
 
-  return points.map(p => ({ ...p, elevationM: cache.get(key(p)) ?? null }));
+  const groups = chunk(missing, BATCH_SIZE);
+  if (groups.length > 1) logger.info({ requests: groups.length }, "Looking up elevation");
+  const abort = { failed: false };
+  for (const group of groups) {
+    const p = scheduleBatch(group, abort);
+    group.forEach(k => inflight.set(k, p));
+    p.catch(() => {}).finally(() => group.forEach(k => { if (inflight.get(k) === p) inflight.delete(k); }));
+    waitFor.add(p);
+  }
+  await Promise.all(waitFor);
+  return keys.map(k => cache.get(k) ?? null);
+}
+
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]> {
+  if (points.length === 0) return [];
+  const dists = points.every(p => typeof p.distanceOnRouteM === "number")
+    ? points.map(p => p.distanceOnRouteM!)
+    : accumulateDistances(points);
+  const total = dists[dists.length - 1];
+
+  // 1) sample positions evenly along the route
+  const spacing = Math.max(MIN_SAMPLE_SPACING_M, total / (MAX_SAMPLES - 1));
+  const samples: { d: number; lat: number; lng: number }[] = [];
+  let seg = 0;
+  for (let k = 0; ; k++) {
+    const d = Math.min(k * spacing, total);
+    while (seg < points.length - 2 && dists[seg + 1] < d) seg++;
+    const a = points[seg], b = points[seg + 1] ?? a;
+    const len = (dists[seg + 1] ?? dists[seg]) - dists[seg];
+    const t = len > 0 ? Math.min(Math.max((d - dists[seg]) / len, 0), 1) : 0;
+    samples.push({ d, lat: lerp(a.lat, b.lat, t), lng: lerp(a.lng, b.lng, t) });
+    if (d >= total) break;
+  }
+
+  // 2) look them up
+  const values = await lookup(samples);
+
+  // 3) interpolate an elevation for every point by its distance along the route
+  let j = 0;
+  return points.map((p, i) => {
+    const d = dists[i];
+    while (j < samples.length - 2 && samples[j + 1].d < d) j++;
+    const s0 = samples[j], s1 = samples[j + 1] ?? s0;
+    const v0 = values[j], v1 = values[j + 1] ?? v0;
+    let elevationM: number | null;
+    if (v0 === null || v1 === null) elevationM = v0 ?? v1 ?? null;
+    else {
+      const span = s1.d - s0.d;
+      elevationM = span > 0 ? lerp(v0, v1, Math.min(Math.max((d - s0.d) / span, 0), 1)) : v0;
+    }
+    return { ...p, elevationM };
+  });
 }

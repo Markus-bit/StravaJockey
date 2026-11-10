@@ -18,12 +18,13 @@ type Props = {
   elevationGainM: number | null;
   elevationLoading: boolean;
   busy: boolean;
+  downloading: boolean;
   onDownload: () => void;
   onClear: () => void;
 };
 
 export default function RunDetails({
-  settings: s, onChange, distanceM, elevationGainM, elevationLoading, busy, onDownload, onClear,
+  settings: s, onChange, distanceM, elevationGainM, elevationLoading, busy, downloading, onDownload, onClear,
 }: Props) {
   const isRun = s.sport === "run";
   const word = isRun ? "Run" : "Ride";
@@ -212,12 +213,15 @@ export default function RunDetails({
 
       <div className="action-row">
         <button onClick={onDownload} disabled={busy}>
-          Download GPX
+          {downloading ? "Generating…" : "Download GPX"}
         </button>
         <button className="secondary" onClick={onClear} disabled={busy}>
           Clear
         </button>
       </div>
+      {downloading && (
+        <p className="rd-hint">Looking up elevation for the route. Long routes can take up to ~30 seconds.</p>
+      )}
     </section>
   );
 }

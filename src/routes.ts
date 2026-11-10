@@ -50,19 +50,23 @@ router.post("/route", async (req, res) => {
 
     // høydemeter er "nice to have" for statistikken: feil her skal ikke stoppe ruten
     let elevationGainM: number | null = null;
+    let elevationError: string | null = null;
     if (body.includeElevation) {
       try {
         const gain = elevationGain(await enrichElevation(dense));
-        elevationGainM = gain === null ? null : Math.round(gain);
+        if (gain === null) elevationError = "No elevation data for this area (the elevation dataset covers Europe only).";
+        else elevationGainM = Math.round(gain);
       } catch (e:any) {
-        logger.warn({ err: e?.message }, "Elevation lookup failed for route stats");
+        elevationError = e?.message || "Elevation lookup failed";
+        logger.warn({ err: elevationError }, "Elevation lookup failed for route stats");
       }
     }
 
     res.json({
       geometry: { type: "LineString", coordinates: dense.map(p=>[p.lng,p.lat]) },
       distanceM: Math.round(total),
-      elevationGainM
+      elevationGainM,
+      elevationError
     });
   } catch (e:any) {
     res.status(400).json({ error: e?.message || "Route failed" });

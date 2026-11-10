@@ -51,6 +51,7 @@ export default function App() {
   const [distanceM, setDistanceM] = useState<number | null>(null);
   const [elevationGainM, setElevationGainM] = useState<number | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
+  const [elevationError, setElevationError] = useState<string | null>(null);
   // Øker for hver ny rute, så et sent høydesvar for en gammel rute ignoreres
   const routeRequestId = useRef(0);
   const hasSnapCandidate = waypoints.length >= 2;
@@ -223,6 +224,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
     setRoutePoints(pts);
     setDistanceM(typeof data.distanceM === "number" ? data.distanceM : null);
     setElevationGainM(null);
+    setElevationError(null);
     fitToLine(data.geometry.coordinates as [number, number][]);
   } catch (e) {
     alert(e instanceof Error ? e.message : String(e));
@@ -234,9 +236,13 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
   setElevationLoading(true);
   try {
     const data = await (await postJson(`/api/route`, { ...body, includeElevation: true })).json();
-    if (id === routeRequestId.current) setElevationGainM(data.elevationGainM ?? null);
-  } catch {
-    /* høydemeter er valgfritt; vis "–" */
+    if (id === routeRequestId.current) {
+      setElevationGainM(data.elevationGainM ?? null);
+      setElevationError(data.elevationError ?? null);
+    }
+  } catch (e) {
+    // høydemeter er valgfritt; vis "–" og årsaken
+    if (id === routeRequestId.current) setElevationError(e instanceof Error ? e.message : String(e));
   } finally {
     if (id === routeRequestId.current) setElevationLoading(false);
   }
@@ -295,6 +301,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     setSnappedCoords([]);
     setDistanceM(null);
     setElevationGainM(null);
+    setElevationError(null);
     setElevationLoading(false);
     routeRequestId.current++;
     clearSourcesOnMap();
@@ -407,6 +414,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           distanceM={distanceM}
           elevationGainM={elevationGainM}
           elevationLoading={elevationLoading}
+          elevationError={elevationError}
           busy={busy}
           downloading={downloading}
           onDownload={downloadGpx}

@@ -45,9 +45,9 @@ export async function enrichElevation(
 // Total climb in metres. The 25 m elevation model is noisy, so smooth before summing
 // (otherwise flat routes show lots of fake climbing).
 export function elevationGain(points: MatchedPoint[], window = 5): number | null {
-  const ele = points.map(p => p.elevationM);
-  if (ele.length === 0 || ele.some(e => typeof e !== "number")) return null;
-  const vals = ele as number[];
+  // skip points without data (e.g. over water) instead of giving up on the whole route
+  const vals = points.map(p => p.elevationM).filter((e): e is number => typeof e === "number");
+  if (vals.length < 2) return null;
   const half = Math.floor(window / 2);
   const smooth = vals.map((_, i) => {
     const from = Math.max(0, i - half), to = Math.min(vals.length, i + half + 1);
@@ -73,7 +73,11 @@ async function getOpenTopoBatch(locations: string, attempt = 1): Promise<any> {
       await sleep(waitMs);
       return getOpenTopoBatch(locations, attempt + 1);
     }
-    throw err;
+    if (status === 429) {
+      throw new Error("Elevation service limit reached (OpenTopoData allows ~1000 requests per day). Try again later.");
+    }
+    if (!err?.response) throw new Error(`Elevation service unreachable: ${err?.message || "network error"}`);
+    throw new Error(`Elevation service error (HTTP ${status}): ${err?.response?.data?.error || err?.message}`);
   }
 }
 
@@ -155,8 +159,8 @@ async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]
     if (d >= total) break;
   }
 
-  // 2) look them up
-  const values = await lookup(samples);
+  // 2) look them up, and fill gaps (points with no data, e.g. lakes/fjords) from neighbours
+  const values = fillGaps(await lookup(samples));
 
   // 3) interpolate an elevation for every point by its distance along the route
   let j = 0;
@@ -173,4 +177,19 @@ async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]
     }
     return { ...p, elevationM };
   });
+}
+
+// Linear interpolation over null entries; leading/trailing gaps copy the nearest value.
+// Stays all-null if there is no data at all (e.g. route outside EU-DEM coverage).
+function fillGaps(values: (number | null)[]): (number | null)[] {
+  const out = [...values];
+  const known = out.flatMap((v, i) => (v === null ? [] : [i]));
+  if (known.length === 0 || known.length === out.length) return out;
+  for (let i = 0; i < known[0]; i++) out[i] = out[known[0]];
+  for (let i = known[known.length - 1] + 1; i < out.length; i++) out[i] = out[known[known.length - 1]];
+  for (let k = 1; k < known.length; k++) {
+    const a = known[k - 1], b = known[k];
+    for (let i = a + 1; i < b; i++) out[i] = lerp(out[a]!, out[b]!, (i - a) / (b - a));
+  }
+  return out;
 }

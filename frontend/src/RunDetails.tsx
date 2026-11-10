@@ -17,6 +17,7 @@ type Props = {
   distanceM: number | null;
   elevationGainM: number | null;
   elevationLoading: boolean;
+  elevationError: string | null;
   busy: boolean;
   downloading: boolean;
   onDownload: () => void;
@@ -24,7 +25,7 @@ type Props = {
 };
 
 export default function RunDetails({
-  settings: s, onChange, distanceM, elevationGainM, elevationLoading, busy, downloading, onDownload, onClear,
+  settings: s, onChange, distanceM, elevationGainM, elevationLoading, elevationError, busy, downloading, onDownload, onClear,
 }: Props) {
   const isRun = s.sport === "run";
   const word = isRun ? "Run" : "Ride";
@@ -73,6 +74,7 @@ export default function RunDetails({
             label={s.paceUnit}
           />
         </div>
+        {!elevationLoading && elevationError && <p className="stats-note">{elevationError}</p>}
       </div>
 
       <div className="rd-row">

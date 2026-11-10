@@ -48,14 +48,6 @@ export default function App() {
   const [routePoints, setRoutePoints] = useState<LngLat[]>([]);
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
   const [activityName, setActivityName] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [strava, setStrava] = useState<{ connected: boolean; athleteName: string | null }>({
-    connected: false,
-    athleteName: null,
-  });
-  const [uploadResult, setUploadResult] = useState<
-    { activityUrl: string } | { processing: true } | null
-  >(null);
   const [profile, setProfile] = useState<"walking" | "cycling" | "driving">("walking");
   const [paceMinPerKm, setPaceMinPerKm] = useState<number>(5.0);
   const [spacingM, setSpacingM] = useState<number>(75);
@@ -64,26 +56,6 @@ export default function App() {
   const [locating, setLocating] = useState(false);
   const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
   const hasSnapCandidate = waypoints.length >= 2;
-
-  // --- Strava: status + resultat fra OAuth-redirect (?strava=connected / ?strava_error=...) ---
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const oauthError = params.get("strava_error");
-    if (params.has("strava") || oauthError) {
-      window.history.replaceState(null, "", window.location.pathname);
-      if (oauthError) alert(oauthError);
-    }
-    refreshStravaStatus();
-  }, []);
-
-  async function refreshStravaStatus() {
-    try {
-      const res = await fetch("/api/strava/status");
-      if (res.ok) setStrava(await res.json());
-    } catch {
-      /* backend not reachable; keep "not connected" */
-    }
-  }
 
   // --- Init kart ---
   useEffect(() => {
@@ -325,71 +297,36 @@ async function snapToRoad() {
     );
   }
 
-  // Request body shared by "Download GPX" and "Upload to Strava", or null if too few points
-  function activityRequestBody() {
+  async function downloadGpx() {
     // Prefer newly clicked points; otherwise use the points behind the snapped route
     const pts = waypoints.length >= 2 ? waypoints : routePoints;
-    if (pts.length < 2) return null;
-    const iso =
-      startISO.length === 16
-        ? new Date(startISO).toISOString()
-        : new Date().toISOString();
-    return {
-      profile,
-      spacingM,
-      paceSecPerKm: Math.round(paceMinPerKm * 60),
-      name: activityName.trim() || undefined,
-      description: description.trim() || undefined,
-      points: pts,
-      startTimeISO: iso,
-      // elevation er av som default i backend
-    };
-  }
-
-  async function postJson(url: string, body: unknown) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      let msg = errText;
-      try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
-      throw new Error(msg);
-    }
-    return res;
-  }
-
-  async function uploadToStrava() {
-    const body = activityRequestBody();
-    if (!body) return alert("Trenger minst to punkter");
-    setBusy(true);
-    setUploadResult(null);
-    try {
-      const data = await (await postJson(`/api/strava/upload`, body)).json();
-      if (data.state === "ready") setUploadResult({ activityUrl: data.activityUrl });
-      else setUploadResult({ processing: true });
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-      refreshStravaStatus(); // e.g. token revoked -> show "Connect Strava" again
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function disconnectStrava() {
-    await fetch("/api/strava/disconnect", { method: "POST" });
-    setUploadResult(null);
-    refreshStravaStatus();
-  }
-
-  async function downloadGpx() {
-    const body = activityRequestBody();
-    if (!body) return alert("Trenger minst to punkter");
+    if (pts.length < 2) return alert("Trenger minst to punkter");
     setBusy(true);
     try {
-      const res = await postJson(`/api/generate-gpx`, body);
+      const iso =
+        startISO.length === 16
+          ? new Date(startISO).toISOString()
+          : new Date().toISOString();
+
+      const res = await fetch(`/api/generate-gpx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile,
+          spacingM,
+          paceSecPerKm: Math.round(paceMinPerKm * 60),
+          name: activityName.trim() || undefined,
+          points: pts,
+          startTimeISO: iso,
+          // elevation er av som default i backend
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        let msg = errText;
+        try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
+        throw new Error(msg);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -461,15 +398,6 @@ async function snapToRoad() {
               />
             </label>
             <label>
-              <span>Description (Strava)</span>
-              <textarea
-                value={description}
-                maxLength={2000}
-                rows={2}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </label>
-            <label>
               <span>Profil</span>
               <select value={profile} onChange={(e) => setProfile(e.target.value as any)}>
                 <option value="walking">Walking</option>
@@ -514,38 +442,6 @@ async function snapToRoad() {
             <button onClick={clearAll} disabled={busy}>
               Clear
             </button>
-          </div>
-          <div className="strava-box">
-            {strava.connected ? (
-              <>
-                <button className="strava-button" onClick={uploadToStrava} disabled={busy}>
-                  {busy ? "Working…" : "Upload to Strava"}
-                </button>
-                <span className="strava-status">
-                  Connected{strava.athleteName ? ` as ${strava.athleteName}` : ""} ·{" "}
-                  <button type="button" className="link-button" onClick={disconnectStrava}>
-                    Disconnect
-                  </button>
-                </span>
-              </>
-            ) : (
-              <a className="strava-button" href="/api/strava/auth">
-                Connect Strava
-              </a>
-            )}
-            {uploadResult && "activityUrl" in uploadResult && (
-              <div className="distance-card">
-                Uploaded!{" "}
-                <a href={uploadResult.activityUrl} target="_blank" rel="noreferrer">
-                  Open on Strava
-                </a>
-              </div>
-            )}
-            {uploadResult && "processing" in uploadResult && (
-              <div className="distance-card">
-                Uploaded. Strava is still processing it; it will show up in your feed shortly.
-              </div>
-            )}
           </div>
           {totalDistanceKm !== null && (
             <div className="distance-card">

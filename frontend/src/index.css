@@ -274,6 +274,33 @@ html, body, #root {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+/* Animated "loading" dots in a stat value */
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 1.2em; /* same height as a number, so the card doesn't jump */
+}
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fc4c02;
+  animation: loading-dot 1.2s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes loading-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-dots span { animation: loading-dot-fade 1.2s ease-in-out infinite; }
+  @keyframes loading-dot-fade {
+    0%, 80%, 100% { opacity: 0.35; }
+    40% { opacity: 1; }
+  }
+}
 .stats-note {
   margin: 16px 0 0;
   font-size: 13px;

@@ -43,8 +43,13 @@ export default function RunDetails({
   const distanceText =
     distanceM === null ? "–" : `${(distanceM / 1000 / (miles ? 1.609344 : 1)).toFixed(2)} ${miles ? "mi" : "km"}`;
   const durationText = distanceM === null ? "–" : formatDuration((distanceM / 1000) * s.paceSecPerKm);
-  const elevationText =
-    elevationLoading ? "…" : elevationGainM === null ? "–" : `${elevationGainM}m`;
+  const elevationText: ReactNode = elevationLoading ? (
+    <span className="loading-dots" role="status" aria-label="Loading elevation gain">
+      <span />
+      <span />
+      <span />
+    </span>
+  ) : elevationGainM === null ? "–" : `${elevationGainM}m`;
 
   return (
     <section className="controls-panel run-details">
@@ -228,7 +233,7 @@ export default function RunDetails({
   );
 }
 
-function Stat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
+function Stat({ icon, value, label }: { icon: ReactNode; value: ReactNode; label: string }) {
   return (
     <div className="stat">
       <span className="stat-icon">{icon}</span>

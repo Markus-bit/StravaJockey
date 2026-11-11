@@ -1,3 +1,15 @@
+/* ---------- Brand color ----------
+   Change --brand to recolor the whole site (buttons, sliders, icons, charts,
+   map marker). Every other orange shade below is derived from it. */
+:root {
+  --brand: #fc4c02;
+
+  --brand-hover: color-mix(in srgb, var(--brand) 82%, white);       /* hover on brand buttons */
+  --brand-tint: color-mix(in srgb, var(--brand) 6.5%, white);       /* pale hover background */
+  --brand-tint-strong: color-mix(in srgb, var(--brand) 8%, white);  /* slightly stronger pale background */
+  --brand-ink: color-mix(in srgb, var(--brand) 45%, #13141f);       /* dark text on pale brand backgrounds */
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -32,14 +44,14 @@ html, body, #root {
 .header-actions button {
   padding: 8px 14px;
   border-radius: 6px;
-  border: 1px solid #fc4c02;
-  background: #fc4c02;
+  border: 1px solid var(--brand);
+  background: var(--brand);
   color: #fff;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 .header-actions button:hover {
-  background: #ff6d2c;
+  background: var(--brand-hover);
 }
 .content {
   flex: 1;
@@ -84,7 +96,7 @@ html, body, #root {
 }
 .map-header-tip {
   font-size: 12px;
-  color: #fc4c02;
+  color: var(--brand);
 }
 .map-container {
   position: relative;
@@ -130,7 +142,7 @@ html, body, #root {
   padding: 10px 16px;
   border-radius: 8px;
   border: none;
-  background: #fc4c02;
+  background: var(--brand);
   color: #fff;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -140,22 +152,22 @@ html, body, #root {
   cursor: not-allowed;
 }
 .action-row button:not(:disabled):hover {
-  background: #ff6d2c;
+  background: var(--brand-hover);
 }
 .action-row button.secondary {
   background: #fff;
-  color: #fc4c02;
-  border: 1px solid #fc4c02;
+  color: var(--brand);
+  border: 1px solid var(--brand);
 }
 .action-row button.secondary:not(:disabled):hover {
-  background: #fff4ee;
+  background: var(--brand-tint);
 }
 .distance-card {
   padding: 10px 12px;
-  background: rgba(252, 76, 2, 0.08);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
   border-radius: 8px;
   font-size: 14px;
-  color: #7c2d12;
+  color: var(--brand-ink);
 }
 .locate-button {
   position: absolute;
@@ -165,9 +177,9 @@ html, body, #root {
   height: 40px;
   border: none;
   border-radius: 8px;
-  background: #fc4c02;
+  background: var(--brand);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(252, 76, 2, 0.35);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 35%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -197,15 +209,15 @@ html, body, #root {
   padding: 10px 16px;
   border: none;
   border-radius: 10px;
-  background: #fc4c02;
+  background: var(--brand);
   color: #fff;
   font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(252, 76, 2, 0.35);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 35%, transparent);
 }
 .map-action--secondary {
   background: #fff;
-  color: #fc4c02;
+  color: var(--brand);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
 }
 .map-action:disabled {
@@ -216,7 +228,7 @@ html, body, #root {
 
 /* ---------- Run Details panel ---------- */
 .run-details {
-  --accent: #fc4c02;
+  --accent: var(--brand);
   --text: #111827;
   --muted: #6b7280;
   --line: #e5e7eb;
@@ -294,7 +306,7 @@ html, body, #root {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fc4c02;
+  background: var(--brand);
   animation: loading-dot 1.2s ease-in-out infinite;
 }
 .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
@@ -350,7 +362,7 @@ html, body, #root {
 .rd-input:focus,
 .rd-select:focus,
 .rd-input:focus-within {
-  outline: 2px solid rgba(252, 76, 2, 0.35);
+  outline: 2px solid color-mix(in srgb, var(--brand) 35%, transparent);
   outline-offset: 0;
   border-color: var(--accent);
 }
@@ -401,7 +413,7 @@ textarea.rd-input {
 .datepicker-trigger.open {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(252, 76, 2, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 15%, transparent);
 }
 .datepicker-value {
   flex: 1;
@@ -482,7 +494,7 @@ textarea.rd-input {
   cursor: pointer;
 }
 .datepicker-day:hover {
-  background: #fff1ea;
+  background: var(--brand-tint-strong);
 }
 .datepicker-day.outside {
   color: #c4c8cf;
@@ -501,7 +513,7 @@ textarea.rd-input {
 .datepicker-day:focus-visible,
 .datepicker-nav:focus-visible,
 .datepicker-link:focus-visible {
-  outline: 2px solid rgba(252, 76, 2, 0.5);
+  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
   outline-offset: 1px;
 }
 .datepicker-foot {
@@ -524,7 +536,7 @@ textarea.rd-input {
   cursor: pointer;
 }
 .datepicker-link:hover {
-  background: #fff1ea;
+  background: var(--brand-tint-strong);
 }
 
 /* Sliders */
@@ -576,7 +588,7 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(to right, #fc4c02 var(--fill), #f0f0f2 var(--fill));
+  background: linear-gradient(to right, var(--brand) var(--fill), #f0f0f2 var(--fill));
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -585,7 +597,7 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: -7px;
   border-radius: 50%;
   border: none;
-  background: #fc4c02;
+  background: var(--brand);
 }
 input[type="range"]::-moz-range-track {
   height: 8px;
@@ -595,17 +607,17 @@ input[type="range"]::-moz-range-track {
 input[type="range"]::-moz-range-progress {
   height: 8px;
   border-radius: 999px;
-  background: #fc4c02;
+  background: var(--brand);
 }
 input[type="range"]::-moz-range-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;
   border: none;
-  background: #fc4c02;
+  background: var(--brand);
 }
 input[type="range"]:focus-visible {
-  outline: 2px solid rgba(252, 76, 2, 0.4);
+  outline: 2px solid color-mix(in srgb, var(--brand) 40%, transparent);
   outline-offset: 4px;
   border-radius: 999px;
 }
@@ -624,7 +636,7 @@ input[type="range"]:focus-visible {
   transition: background 0.2s ease;
 }
 .switch.on {
-  background: #fc4c02;
+  background: var(--brand);
 }
 .switch.neutral,
 .switch.neutral.on {
@@ -645,7 +657,7 @@ input[type="range"]:focus-visible {
   transform: translateX(22px);
 }
 .switch:focus-visible {
-  outline: 2px solid rgba(252, 76, 2, 0.4);
+  outline: 2px solid color-mix(in srgb, var(--brand) 40%, transparent);
   outline-offset: 2px;
 }
 
@@ -701,7 +713,7 @@ input[type="range"]:focus-visible {
   touch-action: pan-y;
 }
 .chart-wrap svg:focus-visible {
-  outline: 2px solid rgba(252, 76, 2, 0.5);
+  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -717,13 +729,13 @@ input[type="range"]:focus-visible {
 }
 .chart-line {
   fill: none;
-  stroke: #fc4c02;
+  stroke: var(--brand);
   stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 .chart-area {
-  fill: rgba(252, 76, 2, 0.1);
+  fill: color-mix(in srgb, var(--brand) 10%, transparent);
   stroke: none;
 }
 .chart-crosshair {
@@ -732,7 +744,7 @@ input[type="range"]:focus-visible {
   shape-rendering: crispEdges;
 }
 .chart-dot {
-  fill: #fc4c02;
+  fill: var(--brand);
   stroke: #fff;
   stroke-width: 2;
 }
@@ -775,10 +787,10 @@ input[type="range"]:focus-visible {
   cursor: pointer;
 }
 .footer-links button:hover {
-  color: #fc4c02;
+  color: var(--brand);
 }
 .footer-links button:focus-visible {
-  outline: 2px solid rgba(252, 76, 2, 0.5);
+  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -927,7 +939,7 @@ input[type="range"]:focus-visible {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #fc4c02;
+  background: var(--brand);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -947,8 +959,8 @@ input[type="range"]:focus-visible {
   margin: 20px 0 0;
   padding: 12px 14px;
   border-radius: 10px;
-  background: rgba(252, 76, 2, 0.08);
-  color: #7c2d12;
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+  color: var(--brand-ink);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -991,17 +1003,17 @@ input[type="range"]:focus-visible {
   padding: 16px 20px;
   border: none;
   border-radius: 12px;
-  background: #fc4c02;
+  background: var(--brand);
   color: #fff;
   font: inherit;
   font-size: 17px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(252, 76, 2, 0.3);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand) 30%, transparent);
   transition: background 0.2s ease;
 }
 .download-button:not(:disabled):hover {
-  background: #ff6d2c;
+  background: var(--brand-hover);
 }
 .download-button:disabled {
   opacity: 0.6;
@@ -1020,6 +1032,6 @@ input[type="range"]:focus-visible {
   text-align: center;
 }
 .download-button:focus-visible {
-  outline: 3px solid rgba(252, 76, 2, 0.4);
+  outline: 3px solid color-mix(in srgb, var(--brand) 40%, transparent);
   outline-offset: 3px;
 }

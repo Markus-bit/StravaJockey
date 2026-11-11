@@ -128,7 +128,7 @@ export default function App() {
         source: "hover-point",
         paint: {
           "circle-radius": 6,
-          "circle-color": "#fc4c02",
+          "circle-color": brandColor(),
           "circle-stroke-width": 2,
           "circle-stroke-color": "#fff",
         },
@@ -556,4 +556,9 @@ function pointAtDistance(coords: [number, number][], dists: number[], d: number)
   const span = dists[hi] - dists[lo];
   const t = span > 0 ? Math.min(Math.max((d - dists[lo]) / span, 0), 1) : 0;
   return [coords[lo][0] + (coords[hi][0] - coords[lo][0]) * t, coords[lo][1] + (coords[hi][1] - coords[lo][1]) * t];
+}
+
+// The brand color from the stylesheet (--brand in index.css), for map layers that can't use CSS
+function brandColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#fc4c02";
 }

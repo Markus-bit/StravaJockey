@@ -79,10 +79,10 @@ router.post("/route", async (req, res) => {
     let profile: ReturnType<typeof elevationProfile> | null = null;
     if (body.includeElevation) {
       try {
-        const withEle = await enrichElevation(dense, { provider: "opentopodata" });
+        const withEle = await enrichElevation(dense);
         const gain = elevationGain(withEle);
         if (gain !== null) profile = elevationProfile(withEle, dists);
-        if (gain === null) elevationError = "No elevation data for this area (the elevation dataset covers Europe only).";
+        if (gain === null) elevationError = "No elevation data for this area.";
         else elevationGainM = Math.round(gain);
       } catch (e) {
         elevationError = e instanceof HttpError ? e.message : "Elevation isn't available right now.";
@@ -123,7 +123,7 @@ const GpxRequestSchema = z.object({
   preferMatch: z.boolean().optional(),
   spacingM: z.number().min(10).max(500).default(25),
   includeElevation: z.boolean().default(false),
-  elevationProvider: z.enum(["opentopodata"]).optional()
+  elevationProvider: z.enum(["mapbox", "opentopodata"]).optional()
 });
 
 router.post("/generate-gpx", async (req, res) => {
@@ -141,7 +141,7 @@ router.post("/generate-gpx", async (req, res) => {
     let withEle: MatchedPoint[] = withDist;
     if (parsed.includeElevation) {
       try {
-        withEle = await enrichElevation(withDist, { provider: parsed.elevationProvider || "opentopodata" });
+        withEle = await enrichElevation(withDist, { provider: parsed.elevationProvider ?? "auto" });
       } catch (e) {
         logger.warn({ err: (e as Error)?.message }, "Elevation lookup failed, writing GPX without elevation");
       }

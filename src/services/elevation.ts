@@ -3,16 +3,27 @@ import { MatchedPoint } from "../domain/types";
 import { logger } from "../logger";
 import { accumulateDistances } from "../domain/geo";
 import { HttpError } from "../errors";
+import { lookupMapboxTerrain } from "./mapboxTerrain";
+
+export type ElevationSource = "mapbox" | "opentopodata";
+
+// Which source to use. Mapbox terrain tiles by default (fast, worldwide, uses the server's
+// MAPBOX_TOKEN); OpenTopoData is the automatic fallback if Mapbox fails.
+// Set ELEVATION_SOURCE=opentopodata to use only OpenTopoData.
+function primarySource(): ElevationSource {
+  return process.env.ELEVATION_SOURCE === "opentopodata" || !process.env.MAPBOX_TOKEN ? "opentopodata" : "mapbox";
+}
 
 if (process.env.ELEVATION_PROVIDER) {
   logger.warn("ELEVATION_PROVIDER in .env is no longer used and can be removed");
 }
 
-// Public OpenTopoData API limits: max 100 locations per request, max 1 request/second.
+// ---- OpenTopoData (fallback). Public API limits: max 100 locations per request,
+// max 1 request/second, ~1000 requests per day.
 const BATCH_SIZE = 100;
 const MIN_INTERVAL_MS = 1100;
-// Elevation is sampled along the route at most this many times (≈ 20 requests ≈ 20 s),
-// then interpolated for every GPS point. Short routes keep one sample per 25 m.
+// Elevation is sampled along the route at most this many times, then interpolated for
+// every GPS point. Short routes keep one sample per 25 m.
 const MAX_SAMPLES = 2000;
 const MIN_SAMPLE_SPACING_M = 25;
 
@@ -33,20 +44,34 @@ const key = (p: { lat: number; lng: number }) => `${p.lat.toFixed(6)},${p.lng.to
 
 export async function enrichElevation(
   points: MatchedPoint[],
-  opts?: { provider?: "none" | "opentopodata" }
+  opts?: { provider?: "none" | "auto" | ElevationSource }
 ): Promise<MatchedPoint[]> {
-  // Callers decide whether they want elevation (includeElevation); no hidden .env override,
-  // so route stats and GPX download always behave the same.
-  const provider = (opts?.provider || "opentopodata").toLowerCase();
-
+  const provider = opts?.provider ?? "auto";
   if (provider === "none") {
     // Skip elevation entirely
     return points.map(p => ({ ...p, elevationM: null }));
   }
-  if (provider !== "opentopodata") {
-    throw new Error(`Unknown elevation provider "${provider}" (supported: opentopodata, none)`);
+  const source = provider === "auto" ? primarySource() : provider;
+  return elevationAlongRoute(points, (samples) => lookupWithFallback(samples, source));
+}
+
+// Mapbox first; if it fails (bad token, network, outage) fall back to OpenTopoData
+async function lookupWithFallback(samples: { lat: number; lng: number }[], source: ElevationSource) {
+  if (source === "mapbox") {
+    try {
+      return await lookupMapboxTerrain(samples, process.env.MAPBOX_TOKEN!);
+    } catch (e) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      logger.warn(
+        { status, err: (e as Error)?.message,
+          hint: status === 401 || status === 403
+            ? "Mapbox rejected the token for terrain tiles: check that MAPBOX_TOKEN has no URL restrictions"
+            : undefined },
+        "Mapbox terrain lookup failed, falling back to OpenTopoData"
+      );
+    }
   }
-  return elevationOpenTopo(points);
+  return lookup(samples);
 }
 
 // Total climb in metres. The 25 m elevation model is noisy, so smooth before summing
@@ -145,7 +170,11 @@ async function lookup(locations: { lat: number; lng: number }[]): Promise<(numbe
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
-async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]> {
+// Sample the route evenly, look the samples up, fill gaps, then interpolate every point
+async function elevationAlongRoute(
+  points: MatchedPoint[],
+  lookupSamples: (samples: { lat: number; lng: number }[]) => Promise<(number | null)[]>
+): Promise<MatchedPoint[]> {
   if (points.length === 0) return [];
   const dists = points.every(p => typeof p.distanceOnRouteM === "number")
     ? points.map(p => p.distanceOnRouteM!)
@@ -167,7 +196,7 @@ async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]
   }
 
   // 2) look them up, and fill gaps (points with no data, e.g. lakes/fjords) from neighbours
-  const raw = await lookup(samples);
+  const raw = await lookupSamples(samples);
   const missing = raw.filter(v => v === null).length;
   logger.info({ samples: raw.length, withoutData: missing }, "Elevation lookup done");
   const values = fillGaps(raw);
@@ -190,7 +219,7 @@ async function elevationOpenTopo(points: MatchedPoint[]): Promise<MatchedPoint[]
 }
 
 // Linear interpolation over null entries; leading/trailing gaps copy the nearest value.
-// Stays all-null if there is no data at all (e.g. route outside EU-DEM coverage).
+// Stays all-null if there is no data at all.
 function fillGaps(values: (number | null)[]): (number | null)[] {
   const out = [...values];
   const known = out.flatMap((v, i) => (v === null ? [] : [i]));

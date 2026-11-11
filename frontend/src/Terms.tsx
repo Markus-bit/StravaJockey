@@ -54,9 +54,9 @@ export default function TermsContent() {
 
       <h3>6. Third-party services</h3>
       <p>
-        The map and routing are provided by Mapbox, using map data from OpenStreetMap contributors.
-        Elevation comes from OpenTopoData using the EU-DEM dataset. Their own terms apply to their
-        services.
+        The map, routing and elevation data are provided by Mapbox, using map data from
+        OpenStreetMap contributors. If Mapbox elevation is unavailable, elevation comes from
+        OpenTopoData instead. Their own terms apply to their services.
       </p>
 
       <h3>7. No affiliation</h3>
@@ -71,9 +71,10 @@ export default function TermsContent() {
         <li>There are no user accounts, no cookies and no analytics or tracking.</li>
         <li>
           The points you click and the route generated from them are sent to our server to build the
-          route and the file. To do that, the server sends the route coordinates to Mapbox (routing) and
-          OpenTopoData (elevation). We don't save routes or files; elevation values may be cached in
-          memory for a short time to avoid repeated lookups, and are lost when the server restarts.
+          route and the file. To do that, the server sends the route coordinates to Mapbox (routing
+          and elevation), or to OpenTopoData if Mapbox elevation is unavailable. We don't save routes
+          or files; routes and elevation data may be kept in memory for a short time to avoid repeated
+          lookups, and are lost when the server restarts.
         </li>
         <li>
           Your activity name, pace and heart rate settings are only used to build the file and are

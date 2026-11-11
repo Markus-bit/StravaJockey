@@ -224,7 +224,7 @@ export default function RunDetails({
         </p>
       )}
       {downloading && (
-        <p className="rd-hint">Looking up elevation for the route. Long routes can take up to ~30 seconds.</p>
+        <p className="rd-hint">Building your file. Long routes can take a few seconds.</p>
       )}
     </section>
   );

@@ -2,7 +2,7 @@
 
 Draw a route on a map, choose pace and heart rate settings, and download it as a GPX file.
 
-- `src/` – Express + TypeScript API (routing via Mapbox, elevation via OpenTopoData, GPX generation)
+- `src/` – Express + TypeScript API (routing and elevation via Mapbox, OpenTopoData as elevation fallback, GPX generation)
 - `frontend/` – React + Vite app (Mapbox GL map, settings panel, charts)
 
 ## Setup

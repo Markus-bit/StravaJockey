@@ -96,7 +96,7 @@ const HOW_IT_WORKS: Content = {
     },
     {
       title: "Download the GPX",
-      text: "Press “Download GPX”. The file contains GPS points with timestamps, elevation and heart rate, built from your settings. Long routes can take up to ~30 seconds while elevation is looked up.",
+      text: "Press “Download GPX”. The file contains GPS points with timestamps, elevation and heart rate, built from your settings. Long routes can take a few seconds.",
     },
   ],
   note: "Press “Clear” on the map to start over. Switching between Run and Bike re-snaps the route automatically.",

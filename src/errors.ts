@@ -42,7 +42,11 @@ function classify(e: unknown): { status: number; message: string; log: Record<st
     const log = { upstream: url, upstreamStatus: status, code: e.code };
     const isMapbox = url?.includes("mapbox.com");
     if (status === 401 || status === 403) {
-      return { status: 500, message: "The server isn't configured correctly. Please try again later.", log };
+      const hint = isMapbox
+        ? `Mapbox rejected MAPBOX_TOKEN (HTTP ${status}). Check in the Mapbox dashboard that the token still exists ` +
+          "and has NO URL restrictions (server requests don't come from your website), then update .env and restart the server."
+        : `An external service rejected the request (HTTP ${status}).`;
+      return { status: 500, message: "The server isn't configured correctly. Please try again later.", log: { ...log, hint } };
     }
     if (isMapbox && status === 422) {
       // e.g. "Route exceeds maximum distance limitation"

@@ -49,6 +49,14 @@ export default function HelpDialog({ topic, onClose }: { topic: HelpTopic | null
                     <div>
                       <strong>{s.title}</strong>
                       <p>{s.text}</p>
+                      {s.bullets && (
+                        <ul className="help-bullets">
+                          {s.bullets.map((b) => (
+                            <li key={b}>{b}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {s.smallNote && <p className="help-small">{s.smallNote}</p>}
                     </div>
                   </li>
                 ))}
@@ -62,7 +70,13 @@ export default function HelpDialog({ topic, onClose }: { topic: HelpTopic | null
   );
 }
 
-type Content = { title: string; intro?: string; steps: { title: string; text: ReactNode }[]; note?: ReactNode };
+type Step = {
+  title: string;
+  text: ReactNode;
+  bullets?: string[];   // optional list under the text
+  smallNote?: string;   // optional small grey note under the step
+};
+type Content = { title: string; intro?: string; steps: Step[]; note?: ReactNode };
 
 const HOW_IT_WORKS: Content = {
   title: "How it works",
@@ -89,25 +103,42 @@ const HOW_IT_WORKS: Content = {
 };
 
 const HOW_TO_UPLOAD: Content = {
-  title: "How to upload",
-  intro: "Most fitness platforms only accept activity files on their website, not in the phone app, so use a browser (a computer works best).",
+  title: "Uploading your GPX file",
   steps: [
     {
-      title: "Open your platform in a browser",
-      text: "Go to the website of the fitness platform you use and log in.",
+      title: "Open the upload page",
+      text: "Log in to your account on the website of the service you use. Find the “Upload”, “Import” or “Add” option. It's usually in the main menu, on your dashboard or behind a “+” button.",
+      smallNote: "Most services only accept files on their website, not in the phone app, so use a browser (a computer works best).",
     },
     {
-      title: "Find the upload option",
-      text: "Look for “Upload activity” or “Import”. It's usually in the main menu or behind a “+” button. Choose to upload a file.",
+      title: "Select your GPX file",
+      text: "Click “Choose file”, “Browse” or similar, and pick the .gpx file you downloaded (usually in your Downloads folder).",
+      smallNote: "Most services accept .gpx, .tcx and .fit files. Size limits vary.",
     },
     {
-      title: "Choose the GPX file",
-      text: "Select the .gpx file you downloaded (usually in your Downloads folder).",
+      title: "Fill in the activity details",
+      text: "After choosing the file you'll usually get a form for the activity:",
+      bullets: [
+        "Name, e.g. “Morning Run” or “Sunday Long Run”",
+        "Activity type: Run, Ride, Walk, …",
+        "Description (optional)",
+        "Date and time (normally read from the file)",
+        "Who can see it (privacy)",
+      ],
     },
     {
-      title: "Check the details and save",
-      text: "Most platforms show the activity before saving. Check the name and activity type, then save it.",
+      title: "Save",
+      text: "Check the details and click “Save”, “Upload” or “Done”. The activity shows up in your activity list and feed.",
+    },
+    {
+      title: "Check the result",
+      text: "Open the activity and make sure that:",
+      bullets: [
+        "the route on the map looks right",
+        "distance, time and elevation look reasonable",
+        "the activity type is correct",
+      ],
     },
   ],
-  note: "Some platforms don't read the name or activity type from the file, so check them on the upload page before saving.",
+  note: "Something wrong? Most services let you edit the name, type and description after uploading.",
 };

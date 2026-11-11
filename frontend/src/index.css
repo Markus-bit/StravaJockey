@@ -1017,6 +1017,27 @@ input[type="range"]:focus-visible {
   font-size: 15px;
   line-height: 1.5;
 }
+.help-bullets {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #374151;
+  font-size: 15px;
+  line-height: 1.5;
+}
+/* undo the step-row styles (.help-steps li) for the nested bullet list */
+.help-steps .help-bullets li {
+  display: list-item;
+  list-style: disc;
+  margin-bottom: 2px;
+}
+.help-bullets li::marker {
+  color: #9ca3af;
+}
+.help-steps p.help-small {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 13px;
+}
 .help-note {
   margin: 20px 0 0;
   padding: 12px 14px;

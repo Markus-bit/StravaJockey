@@ -1,5 +1,6 @@
 import axios from "axios";
 import { logger } from "../logger";
+import { HttpError } from "../errors";
 import type { LngLat, MatchProfile, MatchedPoint } from "../domain/types";
 
 const DIR_BASE   = "https://api.mapbox.com/directions/v5/mapbox";
@@ -12,6 +13,10 @@ const profileMap: Record<MatchProfile,string> = {
 };
 
 const DIRECTIONS_MAX_POINTS = 25;
+
+function noRoute(detail?: string) {
+  return new HttpError(422, "No route could be found between these points. Try placing them on or near roads or paths.", detail);
+}
 const MAP_MATCH_MAX_POINTS = 100;
 
 function thinPoints(points: LngLat[], limit: number): LngLat[] {
@@ -43,7 +48,7 @@ export async function directionsRoute(points: LngLat[], profile: MatchProfile, t
   });
 
   const route = res.data?.routes?.[0];
-  if (!route) throw new Error("No route from Directions");
+  if (!route) throw noRoute(res.data?.message);
   return route.geometry.coordinates.map((c: number[]) => ({ lng: c[0], lat: c[1] }));
 }
 
@@ -70,11 +75,7 @@ export async function mapMatch(points: LngLat[], profile: MatchProfile, token: s
 
   const match = res.data?.matchings?.[0];
   if (!match) {
-    const code = res.data?.code || "NoMatch";
-    const msg  = res.data?.message || "No matching found";
-    const err: any = new Error(msg);
-    err.code = code;
-    throw err;
+    throw noRoute(res.data?.message);
   }
 
   return match.geometry.coordinates.map((c: number[]) => ({ lng: c[0], lat: c[1] }));

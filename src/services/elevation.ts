@@ -2,6 +2,7 @@ import axios from "axios";
 import { MatchedPoint } from "../domain/types";
 import { logger } from "../logger";
 import { accumulateDistances } from "../domain/geo";
+import { HttpError } from "../errors";
 
 if (process.env.ELEVATION_PROVIDER) {
   logger.warn("ELEVATION_PROVIDER in .env is no longer used and can be removed");
@@ -80,10 +81,10 @@ async function getOpenTopoBatch(locations: string, attempt = 1): Promise<any> {
       return getOpenTopoBatch(locations, attempt + 1);
     }
     if (status === 429) {
-      throw new Error("Elevation service limit reached (OpenTopoData allows ~1000 requests per day). Try again later.");
+      throw new HttpError(503, "Elevation lookups have hit the daily limit. Try again later.");
     }
-    if (!err?.response) throw new Error(`Elevation service unreachable: ${err?.message || "network error"}`);
-    throw new Error(`Elevation service error (HTTP ${status}): ${err?.response?.data?.error || err?.message}`);
+    if (!err?.response) throw new HttpError(502, "The elevation service can't be reached right now.", err?.code);
+    throw new HttpError(502, "The elevation service returned an error. Try again later.", { status });
   }
 }
 

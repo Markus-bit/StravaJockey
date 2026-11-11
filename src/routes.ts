@@ -10,11 +10,16 @@ import { generateHeartRate } from "./services/heartrate";
 import { heartRateRandom, paceRandom } from "./services/noise";
 import { activityPreview, elevationProfile } from "./services/preview";
 import { logger } from "./logger";
-import type { MatchedPoint } from "./domain/types";
+import type { LngLat, MatchedPoint } from "./domain/types";
+import { config } from "./config";
+import { HttpError, sendError } from "./errors";
 
 const router = Router();
 
-const PointsSchema = z.array(z.object({ lng: z.number(), lat: z.number() })).min(2);
+const PointsSchema = z
+  .array(z.object({ lng: z.number().min(-180).max(180), lat: z.number().min(-90).max(90) }))
+  .min(2, "Place at least two points on the map.")
+  .max(config.maxWaypoints, `Too many points (max ${config.maxWaypoints}).`);
 const ProfileSchema = z.enum(["walking","cycling","driving"]);
 
 function toFileName(name: string): string {
@@ -24,8 +29,22 @@ function toFileName(name: string): string {
 
 function getMapboxToken(): string {
   const token = process.env.MAPBOX_TOKEN;
-  if (!token) throw new Error("MAPBOX_TOKEN is not set on the server. Add it to .env and restart.");
+  if (!token) {
+    throw new HttpError(500, "The server isn't configured correctly. Please try again later.",
+      "MAPBOX_TOKEN is not set on the server. Add it to .env and restart.");
+  }
   return token;
+}
+
+// Snap to roads and refuse routes longer than the configured maximum
+async function snapWithinLimits(points: LngLat[], profile: "walking" | "cycling" | "driving", preferMatch?: boolean) {
+  const snapped = await snapToRoad(points, profile, getMapboxToken(), preferMatch);
+  const dists = accumulateDistances(snapped);
+  const km = (dists[dists.length - 1] ?? 0) / 1000;
+  if (km > config.maxRouteKm) {
+    throw new HttpError(422, `Routes can be at most ${config.maxRouteKm} km long (this one is ${Math.round(km)} km).`);
+  }
+  return snapped;
 }
 
 router.get("/health", (_req,res)=>res.json({ok:true}));
@@ -41,8 +60,7 @@ router.post("/route", async (req, res) => {
       includeElevation: z.boolean().default(false)
     }).parse(req.body);
 
-    const token = getMapboxToken();
-    const snapped = await snapToRoad(body.points, body.profile, token, body.preferMatch);
+    const snapped = await snapWithinLimits(body.points, body.profile, body.preferMatch);
 
     // densifiser for jevn høyde/tidsprofil
     const dense = densifyLine(snapped, body.spacingM);
@@ -61,9 +79,9 @@ router.post("/route", async (req, res) => {
         if (gain !== null) profile = elevationProfile(withEle, dists);
         if (gain === null) elevationError = "No elevation data for this area (the elevation dataset covers Europe only).";
         else elevationGainM = Math.round(gain);
-      } catch (e:any) {
-        elevationError = e?.message || "Elevation lookup failed";
-        logger.warn({ err: elevationError }, "Elevation lookup failed for route stats");
+      } catch (e) {
+        elevationError = e instanceof HttpError ? e.message : "Elevation isn't available right now.";
+        logger.warn({ err: (e as Error)?.message }, "Elevation lookup failed for route stats");
       }
     }
 
@@ -74,8 +92,8 @@ router.post("/route", async (req, res) => {
       elevationError,
       elevationProfile: profile
     });
-  } catch (e:any) {
-    res.status(400).json({ error: e?.message || "Route failed" });
+  } catch (e) {
+    sendError(res, e, "route");
   }
 });
 
@@ -107,9 +125,8 @@ router.post("/generate-gpx", async (req, res) => {
   try {
     const parsed = GpxRequestSchema.parse(req.body);
 
-    const token = getMapboxToken();
     // 1) snap (Directions default)
-    const snapped = await snapToRoad(parsed.points, parsed.profile, token, parsed.preferMatch);
+    const snapped = await snapWithinLimits(parsed.points, parsed.profile, parsed.preferMatch);
     // 2) densifiser
     const dense = densifyLine(snapped, parsed.spacingM);
     // 3) distanse
@@ -120,8 +137,8 @@ router.post("/generate-gpx", async (req, res) => {
     if (parsed.includeElevation) {
       try {
         withEle = await enrichElevation(withDist, { provider: parsed.elevationProvider || "opentopodata" });
-      } catch (e:any) {
-        logger.warn({ err: e?.message }, "Elevation lookup failed, writing GPX without elevation");
+      } catch (e) {
+        logger.warn({ err: (e as Error)?.message }, "Elevation lookup failed, writing GPX without elevation");
       }
     }
     // 5) timestamps
@@ -156,8 +173,8 @@ router.post("/generate-gpx", async (req, res) => {
       `attachment; filename="${fileName.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
     );
     res.send(gpx);
-  } catch (e:any) {
-    res.status(400).json({ error: e?.message || "Generate GPX failed" });
+  } catch (e) {
+    sendError(res, e, "generate-gpx");
   }
 });
 
@@ -165,7 +182,8 @@ router.post("/generate-gpx", async (req, res) => {
 router.post("/activity-preview", (req, res) => {
   try {
     const body = z.object({
-      distanceM: z.number().positive().max(5_000_000),
+      distanceM: z.number().positive()
+        .max(config.maxRouteKm * 1000 * 1.01, `Routes can be at most ${config.maxRouteKm} km long.`),
       paceSecPerKm: z.number().positive(),
       paceVariability: z.number().min(0).max(0.5).default(0),
       heartRate: z.object({
@@ -175,9 +193,13 @@ router.post("/activity-preview", (req, res) => {
       seed: z.number().int().min(0).max(0xffffffff).optional()
     }).parse(req.body);
     res.json(activityPreview(body));
-  } catch (e:any) {
-    res.status(400).json({ error: e?.message || "Preview failed" });
+  } catch (e) {
+    sendError(res, e, "activity-preview");
   }
+});
+
+router.use((_req, res) => {
+  res.status(404).json({ error: "Not found" });
 });
 
 export default router;

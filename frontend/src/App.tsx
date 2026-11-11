@@ -4,6 +4,7 @@ import locateIcon from "./assets/my-location.png";
 import { Info, Route as RouteIcon, Upload } from "lucide-react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
+import Toasts, { type Toast } from "./Toasts";
 import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
 import {
   type ActivitySettings, type Sport,
@@ -22,16 +23,16 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string;
 // --- Hjelpetyper ---
 type LngLat = { lng: number; lat: number };
 
-// --- Sikkerhet: sjekk token tydelig ---
-function assertToken() {
+// --- Check the public Mapbox token before creating the map ---
+function hasValidToken() {
   const t = mapboxgl.accessToken;
-  if (!t || typeof t !== "string" || t.length < 30 || !t.startsWith("pk.")) {
-    const msg =
-      "Mapbox-token mangler eller er ugyldig. Sett VITE_MAPBOX_TOKEN i frontend/.env og restart dev-serveren.";
-    console.error(msg, { tokenPreview: t ? t.slice(0, 6) + "..." : "(none)" });
-    alert(msg);
-    throw new Error(msg);
+  const ok = !!t && typeof t === "string" && t.length >= 30 && t.startsWith("pk.");
+  if (!ok) {
+    console.error("VITE_MAPBOX_TOKEN is missing or invalid. Set it in frontend/.env and rebuild/restart.", {
+      tokenPreview: t ? t.slice(0, 6) + "..." : "(none)",
+    });
   }
+  return ok;
 }
 
 function gpxFileName(name: string) {
@@ -51,6 +52,17 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastId = useRef(0);
+
+  // Show an error message for a few seconds (replaces alert())
+  function notify(message: string) {
+    const id = ++toastId.current;
+    setToasts((prev) => [...prev.filter((t) => t.message !== message), { id, message }].slice(-3));
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 7000);
+  }
+  const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
   const [locating, setLocating] = useState(false);
   const [distanceM, setDistanceM] = useState<number | null>(null);
   const [elevationGainM, setElevationGainM] = useState<number | null>(null);
@@ -70,7 +82,10 @@ export default function App() {
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
-    assertToken();
+    if (!hasValidToken()) {
+      setMapError("The map can't be loaded right now. Please try again later.");
+      return;
+    }
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
@@ -260,22 +275,27 @@ export default function App() {
   }
 
 async function postJson(url: string, body: unknown) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
   if (!res.ok) {
-    const errText = await res.text();
-    let msg = errText;
-    try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
-    throw new Error(msg);
+    // The server always answers errors with { error: "<message for the user>" }
+    let msg = "";
+    try { msg = (await res.json())?.error ?? ""; } catch { /* not JSON, e.g. a proxy error page */ }
+    throw new Error(msg || `Something went wrong (error ${res.status}). Please try again.`);
   }
   return res;
 }
 
 function snapToRoad() {
-  if (waypoints.length < 2) return alert("Trenger minst to punkter");
+  if (waypoints.length < 2) return notify("Place at least two points on the map.");
   const pts = [...waypoints];
   // Skjul gamle punkter og stiplet linje umiddelbart i UI
   clearTempOverlays();
@@ -300,7 +320,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
     setSeed(randomSeed());
     fitToLine(data.geometry.coordinates as [number, number][]);
   } catch (e) {
-    alert(e instanceof Error ? e.message : String(e));
+    notify(errorText(e));
     return;
   } finally {
     setBusy(false);
@@ -389,7 +409,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     const map = mapRef.current;
     if (!map) return;
     if (!navigator.geolocation) {
-      alert("Geolocation ikke støttet i denne nettleseren");
+      notify("Your browser doesn't support finding your location.");
       return;
     }
     setLocating(true);
@@ -400,8 +420,13 @@ function updateSettings(patch: Partial<ActivitySettings>) {
         setLocating(false);
       },
       (err) => {
-        const msg = err.message || "Kunne ikke hente posisjon";
-        alert(msg);
+        notify(
+          err.code === err.PERMISSION_DENIED
+            ? "Location access is blocked. Allow it in your browser settings to use this button."
+            : err.code === err.TIMEOUT
+              ? "Finding your location took too long. Please try again."
+              : "Your location isn't available right now."
+        );
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 15000 }
@@ -440,7 +465,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      notify(errorText(e));
     } finally {
       setBusy(false);
       setDownloading(false);
@@ -478,6 +503,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
             </div>
             <div className="map-container">
               <div id="map" ref={containerRef} />
+              {mapError && <div className="map-error" role="alert">{mapError}</div>}
               <button
                 className={`locate-button${locating ? " locating" : ""}`}
                 onClick={centerOnUser}
@@ -533,6 +559,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           </button>
         </nav>
       </footer>
+      <Toasts toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
     </div>
   );
 }

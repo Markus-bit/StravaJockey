@@ -74,21 +74,48 @@ async function lookupWithFallback(samples: { lat: number; lng: number }[], sourc
   return lookup(samples);
 }
 
-// Total climb in metres. The 25 m elevation model is noisy, so smooth before summing
-// (otherwise flat routes show lots of fake climbing).
-export function elevationGain(points: MatchedPoint[], window = 5): number | null {
-  // skip points without data (e.g. over water) instead of giving up on the whole route
-  const vals = points.map(p => p.elevationM).filter((e): e is number => typeof e === "number");
-  if (vals.length < 2) return null;
-  const half = Math.floor(window / 2);
-  const smooth = vals.map((_, i) => {
-    const from = Math.max(0, i - half), to = Math.min(vals.length, i + half + 1);
-    let s = 0;
-    for (let j = from; j < to; j++) s += vals[j];
-    return s / (to - from);
+// Total climb in metres. Elevation data is noisy, so (1) smooth it over a fixed distance
+// and (2) only count a climb once it has risen at least `thresholdM` above the last low
+// point (hysteresis). Without this, small up-and-down wiggles add up to lots of fake
+// climbing. Points without data (e.g. over water) are skipped.
+// Tuned so a real route came out ~6-7 % below the old method, in line with the one
+// comparison with Strava's number we had. Strava's own method isn't public.
+export const GAIN_SMOOTHING_M = 100;
+export const GAIN_THRESHOLD_M = 1;
+
+export function elevationGain(
+  points: MatchedPoint[],
+  opts: { smoothingM?: number; thresholdM?: number } = {}
+): number | null {
+  const smoothingM = opts.smoothingM ?? GAIN_SMOOTHING_M;
+  const thresholdM = opts.thresholdM ?? GAIN_THRESHOLD_M;
+
+  const allDists = points.every(p => typeof p.distanceOnRouteM === "number")
+    ? points.map(p => p.distanceOnRouteM!)
+    : accumulateDistances(points);
+  const d: number[] = [], e: number[] = [];
+  points.forEach((p, i) => {
+    if (typeof p.elevationM === "number") { d.push(allDists[i]); e.push(p.elevationM); }
   });
+  if (e.length < 2) return null;
+
+  // 1) moving average over ±smoothingM/2 along the route (two pointers, O(n))
+  const half = smoothingM / 2;
+  const smooth: number[] = [];
+  let from = 0, to = 0, sum = 0;
+  for (let i = 0; i < e.length; i++) {
+    while (to < e.length && d[to] <= d[i] + half) sum += e[to++];
+    while (d[from] < d[i] - half) sum -= e[from++];
+    smooth.push(sum / (to - from));
+  }
+
+  // 2) count rises of at least thresholdM from the lowest point since the last counted climb
   let gain = 0;
-  for (let i = 1; i < smooth.length; i++) gain += Math.max(0, smooth[i] - smooth[i - 1]);
+  let base = smooth[0];
+  for (const v of smooth) {
+    if (v - base >= thresholdM) { gain += v - base; base = v; }
+    else if (v < base) base = v;
+  }
   return gain;
 }
 

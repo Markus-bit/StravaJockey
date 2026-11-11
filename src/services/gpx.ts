@@ -2,6 +2,9 @@ import { MatchedPoint } from "../domain/types";
 
 export type GpxActivityType = "running" | "cycling";
 
+// Name of the app that made the file (GPX "creator" attribute). Follows SITE_NAME.
+const GPX_CREATOR = process.env.SITE_NAME || "StravaJockey";
+
 // GPX 1.1 writer. Plain string building (no XML library): the format is small and fixed,
 // and it avoids bundling problems on serverless hosts.
 
@@ -24,7 +27,7 @@ export function buildGpx(
 
   const out: string[] = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<gpx version="1.1" creator="fake-run-backend" xmlns="http://www.topografix.com/GPX/1/1" ` +
+    `<gpx version="1.1" creator="${esc(GPX_CREATOR)}" xmlns="http://www.topografix.com/GPX/1/1" ` +
       `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
       // Garmin TrackPointExtension: standard måte å legge puls i GPX (leses av Strava m.fl.)
       `xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" ` +

@@ -649,10 +649,10 @@ input[type="range"]:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 48px;
+  padding: 28px 48px;
   border-top: 1px solid #e5e7eb;
   background: #fff;
-  font-size: 14px;
+  font-size: 15px;
 }
 .footer-copy {
   color: #6b7280;
@@ -710,8 +710,8 @@ input[type="range"]:focus-visible {
   .app-footer {
     flex-direction: column-reverse;
     align-items: flex-start;
-    gap: 10px;
-    padding: 16px;
+    gap: 12px;
+    padding: 24px 16px;
   }
   .footer-links {
     gap: 24px;

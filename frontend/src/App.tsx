@@ -432,12 +432,6 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           <button type="button" onClick={() => setHelpTopic("terms")}>
             Terms of Service
           </button>
-          <button type="button" onClick={() => setHelpTopic("how-it-works")}>
-            How It Works
-          </button>
-          <button type="button" onClick={() => setHelpTopic("how-to-upload")}>
-            How To Upload
-          </button>
         </nav>
       </footer>
     </div>

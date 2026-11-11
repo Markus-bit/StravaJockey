@@ -38,6 +38,9 @@ app.use(
       },
     },
     crossOriginEmbedderPolicy: false,
+    // Mapbox URL-restricted tokens check which site a request comes from, so the browser must
+    // send it. This sends only the origin (https://your-site) to other sites, never the path.
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   })
 );
 

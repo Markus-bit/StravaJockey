@@ -1,8 +1,5 @@
 // Terms of Service + privacy notice. DRAFT: have it reviewed before relying on it.
-// Fill in the operator and contact details below; they are shown in the text.
 const SITE = "StravaJockey";
-const OPERATOR = "[your name or company]";
-const CONTACT_EMAIL = "[your contact email]";
 const LAST_UPDATED = "November 11, 2026";
 
 export default function TermsContent() {
@@ -12,8 +9,8 @@ export default function TermsContent() {
 
       <h3>1. About these terms</h3>
       <p>
-        {SITE} (“the service”) is run by {OPERATOR}. By using the service you agree to these terms.
-        If you don't agree, please don't use it.
+        By using {SITE} (“the service”) you agree to these terms. If you don't agree, please don't
+        use it.
       </p>
 
       <h3>2. What the service does</h3>
@@ -95,21 +92,11 @@ export default function TermsContent() {
           address and usage data as described in Mapbox's privacy policy.
         </li>
       </ul>
-      <p>
-        If you have questions about your data, contact us at {CONTACT_EMAIL}. You also have the right
-        to complain to your data protection authority (in Norway: Datatilsynet).
-      </p>
 
       <h3>9. Changes</h3>
       <p>
         We may update these terms. The date at the top shows when they last changed. Continuing to use
         the service after a change means you accept the new terms.
-      </p>
-
-      <h3>10. Law and contact</h3>
-      <p>
-        These terms are governed by Norwegian law. Questions about the service or these terms:{" "}
-        {CONTACT_EMAIL}.
       </p>
     </div>
   );

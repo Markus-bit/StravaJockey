@@ -414,11 +414,9 @@ textarea.rd-input {
   transform: rotate(180deg);
 }
 .datepicker-popover {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 8px);
-  left: 0;
-  width: min(320px, 100%);
+  position: fixed; /* placed above the field by DatePicker.tsx */
+  z-index: 50;
+  width: min(320px, calc(100vw - 16px));
   padding: 14px;
   background: #fff;
   border: 1px solid var(--line);
@@ -427,7 +425,7 @@ textarea.rd-input {
   animation: datepicker-in 0.14s ease-out;
 }
 @keyframes datepicker-in {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {

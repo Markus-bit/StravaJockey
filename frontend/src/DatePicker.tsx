@@ -36,6 +36,8 @@ export default function DatePicker({
 }: { value: string; onChange: (v: string) => void; label: string }) {
   const selected = parseValue(value);
   const [open, setOpen] = useState(false);
+  // Always opens above the field. position: fixed so the scrolling panel can't clip it.
+  const [pos, setPos] = useState<{ left: number; bottom: number }>({ left: 0, bottom: 0 });
   // month shown in the calendar, and the day that has keyboard focus
   const [view, setView] = useState(() => selected ?? new Date());
   const [focusDay, setFocusDay] = useState(() => selected ?? new Date());
@@ -43,7 +45,18 @@ export default function DatePicker({
   const gridRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  function place() {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const POPOVER_W = 320, GAP = 8, MARGIN = 8;
+    setPos({
+      left: Math.max(MARGIN, Math.min(rect.left, window.innerWidth - POPOVER_W - MARGIN)),
+      bottom: window.innerHeight - rect.top + GAP,
+    });
+  }
+
   function openCalendar() {
+    place();
     const start = selected ?? new Date();
     setView(start);
     setFocusDay(start);
@@ -61,6 +74,17 @@ export default function DatePicker({
   }
 
   // Close when clicking outside
+  // Follow the field when the window is resized or anything scrolls
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -128,7 +152,7 @@ export default function DatePicker({
       </button>
 
       {open && (
-        <div className="datepicker-popover" role="dialog" aria-label="Choose date">
+        <div className="datepicker-popover" role="dialog" aria-label="Choose date" style={pos}>
           <div className="datepicker-head">
             <button type="button" className="datepicker-nav" aria-label="Previous month" onClick={() => shiftMonth(-1)}>
               <ChevronLeft size={18} />

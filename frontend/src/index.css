@@ -642,6 +642,104 @@ input[type="range"]:focus-visible {
   outline-offset: 2px;
 }
 
+/* Activity charts under the map */
+.left-column {
+  gap: 16px;
+}
+.map-panel {
+  min-height: 260px;
+}
+.charts-panel {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.chart-card {
+  min-width: 0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px 12px 6px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.chart-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
+.chart-value {
+  min-width: 0;
+  font-size: 12px;
+  color: #4b5563;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.chart-wrap {
+  width: 100%;
+}
+.chart-wrap svg {
+  display: block;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+.chart-wrap svg:focus-visible {
+  outline: 2px solid rgba(252, 76, 2, 0.5);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.chart-grid {
+  stroke: #eef0f3;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.chart-tick {
+  fill: #6b7280;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-line {
+  fill: none;
+  stroke: #fc4c02;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-area {
+  fill: rgba(252, 76, 2, 0.1);
+  stroke: none;
+}
+.chart-crosshair {
+  stroke: #9ca3af;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.chart-dot {
+  fill: #fc4c02;
+  stroke: #fff;
+  stroke-width: 2;
+}
+.chart-empty {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
 /* Footer */
 .app-footer {
   flex-shrink: 0;
@@ -705,7 +803,13 @@ input[type="range"]:focus-visible {
     width: 100%;
   }
   .left-column {
+    height: auto;
+  }
+  .map-panel {
     height: 55vh;
+  }
+  .charts-panel {
+    grid-template-columns: 1fr;
   }
   .app-footer {
     flex-direction: column-reverse;

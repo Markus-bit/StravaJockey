@@ -7,6 +7,8 @@ import { buildGpx, type GpxActivityType } from "./services/gpx";
 import { generateTimestamps } from "./services/pace";
 import { enrichElevation, elevationGain } from "./services/elevation";
 import { generateHeartRate } from "./services/heartrate";
+import { heartRateRandom, paceRandom } from "./services/noise";
+import { activityPreview, elevationProfile } from "./services/preview";
 import { logger } from "./logger";
 import type { MatchedPoint } from "./domain/types";
 
@@ -51,9 +53,12 @@ router.post("/route", async (req, res) => {
     // høydemeter er "nice to have" for statistikken: feil her skal ikke stoppe ruten
     let elevationGainM: number | null = null;
     let elevationError: string | null = null;
+    let profile: ReturnType<typeof elevationProfile> | null = null;
     if (body.includeElevation) {
       try {
-        const gain = elevationGain(await enrichElevation(dense, { provider: "opentopodata" }));
+        const withEle = await enrichElevation(dense, { provider: "opentopodata" });
+        const gain = elevationGain(withEle);
+        if (gain !== null) profile = elevationProfile(withEle, dists);
         if (gain === null) elevationError = "No elevation data for this area (the elevation dataset covers Europe only).";
         else elevationGainM = Math.round(gain);
       } catch (e:any) {
@@ -66,7 +71,8 @@ router.post("/route", async (req, res) => {
       geometry: { type: "LineString", coordinates: dense.map(p=>[p.lng,p.lat]) },
       distanceM: Math.round(total),
       elevationGainM,
-      elevationError
+      elevationError,
+      elevationProfile: profile
     });
   } catch (e:any) {
     res.status(400).json({ error: e?.message || "Route failed" });
@@ -80,6 +86,7 @@ const GpxRequestSchema = z.object({
   activityType: z.enum(["running","cycling"]).optional(),
   paceSecPerKm: z.number().positive(),
   paceVariability: z.number().min(0).max(0.5).default(0),
+  seed: z.number().int().min(0).max(0xffffffff).optional(),
   heartRate: z.object({
     avgBpm: z.number().min(40).max(220),
     variability: z.number().min(0).max(0.3).default(0)
@@ -125,11 +132,17 @@ router.post("/generate-gpx", async (req, res) => {
       paceVariability: parsed.paceVariability,
       addPauses: parsed.addPauses,
       pauseEveryKm: parsed.pauseEveryKm,
-      pauseSeconds: parsed.pauseSeconds
+      pauseSeconds: parsed.pauseSeconds,
+      rand: paceRandom(parsed.seed)
     });
     // 6) puls
     const withHr = parsed.heartRate
-      ? generateHeartRate({ points: withTime, avgBpm: parsed.heartRate.avgBpm, variability: parsed.heartRate.variability })
+      ? generateHeartRate({
+          points: withTime,
+          avgBpm: parsed.heartRate.avgBpm,
+          variability: parsed.heartRate.variability,
+          rand: heartRateRandom(parsed.seed)
+        })
       : withTime;
     // 7) GPX
     const activityName = parsed.name || "Generated Route";
@@ -145,6 +158,25 @@ router.post("/generate-gpx", async (req, res) => {
     res.send(gpx);
   } catch (e:any) {
     res.status(400).json({ error: e?.message || "Generate GPX failed" });
+  }
+});
+
+// ---- chart preview: pace and heart rate along the route (same generators + seed as the GPX)
+router.post("/activity-preview", (req, res) => {
+  try {
+    const body = z.object({
+      distanceM: z.number().positive().max(5_000_000),
+      paceSecPerKm: z.number().positive(),
+      paceVariability: z.number().min(0).max(0.5).default(0),
+      heartRate: z.object({
+        avgBpm: z.number().min(40).max(220),
+        variability: z.number().min(0).max(0.3).default(0)
+      }).optional(),
+      seed: z.number().int().min(0).max(0xffffffff).optional()
+    }).parse(req.body);
+    res.json(activityPreview(body));
+  } catch (e:any) {
+    res.status(400).json({ error: e?.message || "Preview failed" });
   }
 });
 

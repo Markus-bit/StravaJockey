@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
+import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
 import {
   type ActivitySettings, type Sport,
   defaultActivityName, initialSettings, startTimeISO,
@@ -56,6 +57,12 @@ export default function App() {
   const [elevationError, setElevationError] = useState<string | null>(null);
   // Øker for hver ny rute, så et sent høydesvar for en gammel rute ignoreres
   const routeRequestId = useRef(0);
+  // Seed for the random pace/heart rate variation: the charts and the GPX use the same one,
+  // so the downloaded file looks exactly like the preview. New route -> new seed.
+  const [seed, setSeed] = useState(randomSeed);
+  const [elevationProfile, setElevationProfile] = useState<ElevationProfile | null>(null);
+  const [preview, setPreview] = useState<ActivityPreview | null>(null);
+  const [hoverDistM, setHoverDistM] = useState<number | null>(null);
   const hasSnapCandidate = waypoints.length >= 2;
 
   // --- Init kart ---
@@ -109,6 +116,21 @@ export default function App() {
           "line-width": 2,
           "line-color": "#9ca3af",
           "line-dasharray": [2, 2],
+        },
+      });
+      map.addSource("hover-point", {
+        type: "geojson",
+        data: emptyFeatureCollection(),
+      });
+      map.addLayer({
+        id: "hover-point",
+        type: "circle",
+        source: "hover-point",
+        paint: {
+          "circle-radius": 6,
+          "circle-color": "#fc4c02",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#fff",
         },
       });
       map.addLayer({
@@ -177,6 +199,53 @@ export default function App() {
     });
   }, [snappedCoords]);
 
+  // Pace / heart rate preview for the charts (cheap: no map or elevation lookups).
+  // Debounced so dragging a slider doesn't send a request per pixel.
+  const { paceSecPerKm, paceVariabilityPct, hrEnabled, hrAvgBpm, hrVariabilityPct } = settings;
+  useEffect(() => {
+    if (distanceM === null || distanceM <= 0) {
+      setPreview(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/activity-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            distanceM,
+            paceSecPerKm,
+            paceVariability: paceVariabilityPct / 100,
+            heartRate: hrEnabled ? { avgBpm: hrAvgBpm, variability: hrVariabilityPct / 100 } : undefined,
+            seed,
+          }),
+        });
+        if (res.ok) setPreview(await res.json());
+      } catch {
+        /* aborted or backend unreachable: keep the previous preview */
+      }
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [distanceM, paceSecPerKm, paceVariabilityPct, hrEnabled, hrAvgBpm, hrVariabilityPct, seed]);
+
+  // Cumulative distance along the snapped route, to place the chart hover on the map
+  const routeDists = useMemo(() => cumulativeDistances(snappedCoords), [snappedCoords]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("hover-point") as mapboxgl.GeoJSONSource | undefined;
+    const pos = hoverDistM === null ? null : pointAtDistance(snappedCoords, routeDists, hoverDistM);
+    src?.setData({
+      type: "FeatureCollection",
+      features: pos ? [{ type: "Feature", geometry: { type: "Point", coordinates: pos }, properties: {} }] : [],
+    });
+  }, [hoverDistM, snappedCoords, routeDists]);
+
   // Helpers
   function emptyFeatureCollection(): GeoJSON.FeatureCollection {
     return { type: "FeatureCollection", features: [] };
@@ -226,6 +295,8 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
     setDistanceM(typeof data.distanceM === "number" ? data.distanceM : null);
     setElevationGainM(null);
     setElevationError(null);
+    setElevationProfile(null);
+    setSeed(randomSeed());
     fitToLine(data.geometry.coordinates as [number, number][]);
   } catch (e) {
     alert(e instanceof Error ? e.message : String(e));
@@ -240,6 +311,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
     if (id === routeRequestId.current) {
       setElevationGainM(data.elevationGainM ?? null);
       setElevationError(data.elevationError ?? null);
+      setElevationProfile(data.elevationProfile ?? null);
     }
   } catch (e) {
     // høydemeter er valgfritt; vis "–" og årsaken
@@ -304,6 +376,10 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     setElevationGainM(null);
     setElevationError(null);
     setElevationLoading(false);
+    setElevationProfile(null);
+    setPreview(null);
+    setHoverDistM(null);
+    setSeed(randomSeed());
     routeRequestId.current++;
     clearSourcesOnMap();
   }
@@ -347,6 +423,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
         points: pts,
         paceSecPerKm: s.paceSecPerKm,
         paceVariability: s.paceVariabilityPct / 100,
+        seed,
         heartRate: s.hrEnabled
           ? { avgBpm: s.hrAvgBpm, variability: s.hrVariabilityPct / 100 }
           : undefined,
@@ -412,6 +489,17 @@ function updateSettings(patch: Partial<ActivitySettings>) {
               )}
             </div>
           </section>
+          <ActivityCharts
+            distanceM={distanceM}
+            elevation={elevationProfile}
+            elevationLoading={elevationLoading}
+            elevationError={elevationError}
+            preview={preview}
+            paceUnit={settings.paceUnit}
+            hrEnabled={settings.hrEnabled}
+            hoverDistM={hoverDistM}
+            onHover={setHoverDistM}
+          />
         </div>
         <RunDetails
           settings={settings}
@@ -436,4 +524,34 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       </footer>
     </div>
   );
+}
+
+function randomSeed() {
+  return Math.floor(Math.random() * 0xffffffff);
+}
+
+// Same haversine distance as the backend, so chart distances line up with the map
+function cumulativeDistances(coords: [number, number][]): number[] {
+  const R = 6371000, rad = Math.PI / 180;
+  const out = coords.length ? [0] : [];
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1], [lng2, lat2] = coords[i];
+    const h = Math.sin(((lat2 - lat1) * rad) / 2) ** 2 +
+      Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lng2 - lng1) * rad) / 2) ** 2;
+    out.push(out[i - 1] + 2 * R * Math.asin(Math.sqrt(h)));
+  }
+  return out;
+}
+
+function pointAtDistance(coords: [number, number][], dists: number[], d: number): [number, number] | null {
+  if (coords.length < 2) return null;
+  let lo = 0, hi = dists.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (dists[mid] < d) lo = mid;
+    else hi = mid;
+  }
+  const span = dists[hi] - dists[lo];
+  const t = span > 0 ? Math.min(Math.max((d - dists[lo]) / span, 0), 1) : 0;
+  return [coords[lo][0] + (coords[hi][0] - coords[lo][0]) * t, coords[lo][1] + (coords[hi][1] - coords[lo][1]) * t];
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
 import RunDetails from "./RunDetails";
+import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import {
   type ActivitySettings, type Sport,
   defaultActivityName, initialSettings, startTimeISO,
@@ -47,6 +48,7 @@ export default function App() {
   const [settings, setSettings] = useState<ActivitySettings>(initialSettings);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
   const [locating, setLocating] = useState(false);
   const [distanceM, setDistanceM] = useState<number | null>(null);
   const [elevationGainM, setElevationGainM] = useState<number | null>(null);
@@ -374,11 +376,15 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       <header className="app-header">
         <strong className="app-logo">StravaJockey</strong>
         <div className="header-actions">
-          <button type="button">Dashboard</button>
-          <button type="button">Activities</button>
-          <button type="button">Settings</button>
+          <button type="button" onClick={() => setHelpTopic("how-it-works")}>
+            How it works
+          </button>
+          <button type="button" onClick={() => setHelpTopic("how-to-upload")}>
+            How to upload
+          </button>
         </div>
       </header>
+      <HelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
       <div className="content">
         <div className="left-column">
           <section className="map-panel">

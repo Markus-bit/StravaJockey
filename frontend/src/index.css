@@ -678,3 +678,111 @@ input[type="range"]:focus-visible {
     padding: 20px 16px;
   }
 }
+
+/* Help dialogs ("How it works" / "How to upload") */
+.help-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
+  color: #111827;
+  font-family: inherit;
+}
+.help-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+.help-dialog[open] {
+  animation: help-in 0.16s ease-out;
+}
+@keyframes help-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .help-dialog[open] { animation: none; }
+}
+.help-body {
+  padding: 24px 26px 26px;
+}
+.help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.help-head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+.help-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+}
+.help-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.help-intro {
+  margin: 8px 0 20px;
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.help-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.help-steps li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.help-num {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fc4c02;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.help-steps strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 16px;
+}
+.help-steps p {
+  margin: 4px 0 0;
+  color: #374151;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.help-note {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(252, 76, 2, 0.08);
+  color: #7c2d12;
+  font-size: 14px;
+  line-height: 1.5;
+}

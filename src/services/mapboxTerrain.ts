@@ -52,6 +52,11 @@ export async function lookupMapboxTerrain(locations: Location[], token: string):
     })
   );
   logger.info({ zoom, tiles: keys.length }, "Mapbox terrain lookup");
+  // Every tile missing usually means a wrong tileset name or no access, not open sea:
+  // treat it as a failure so the caller falls back to the other elevation source
+  if ([...decoded.values()].every((t) => t === null)) {
+    throw new Error(`Mapbox returned no terrain tiles for "${TILESET}"`);
+  }
 
   // 3) Read the height at every location
   return locations.map((loc) => {

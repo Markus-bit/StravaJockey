@@ -6,7 +6,7 @@ import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
 import {
   type ActivitySettings, type Sport,
-  defaultActivityName, initialSettings, startTimeISO,
+  initialSettings, startTimeISO,
 } from "./activity";
 
 // Punktavstand i genererte spor (meter). Samme verdi for forhåndsvisning og GPX
@@ -408,11 +408,11 @@ function updateSettings(patch: Partial<ActivitySettings>) {
   }
 
   async function downloadGpx() {
-    // Prefer newly clicked points; otherwise use the points behind the snapped route
-    const pts = waypoints.length >= 2 ? waypoints : routePoints;
-    if (pts.length < 2) return alert("Trenger minst to punkter");
+    // Always the snapped route shown on the map (and in the charts)
+    const pts = routePoints;
     const s = settings;
-    const name = s.name.trim() || defaultActivityName(s.sport, s.hour);
+    const name = s.name.trim();
+    if (pts.length < 2 || snappedCoords.length === 0 || !name) return; // button is disabled then
     setBusy(true);
     setDownloading(true);
     try {
@@ -513,6 +513,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           busy={busy}
           downloading={downloading}
           onDownload={downloadGpx}
+          routeReady={snappedCoords.length > 0 && routePoints.length >= 2}
         />
       </div>
       <footer className="app-footer">

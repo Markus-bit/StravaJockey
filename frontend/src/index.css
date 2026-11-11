@@ -1007,6 +1007,18 @@ input[type="range"]:focus-visible {
   opacity: 0.6;
   cursor: not-allowed;
 }
+/* greyed out until a route is snapped and named */
+.download-button.not-ready,
+.download-button.not-ready:disabled {
+  opacity: 1;
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
+}
+.download-hint {
+  margin: -10px 0 0;
+  text-align: center;
+}
 .download-button:focus-visible {
   outline: 3px solid rgba(252, 76, 2, 0.4);
   outline-offset: 3px;

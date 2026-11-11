@@ -22,10 +22,11 @@ type Props = {
   busy: boolean;
   downloading: boolean;
   onDownload: () => void;
+  routeReady: boolean; // a snapped route is shown on the map
 };
 
 export default function RunDetails({
-  settings: s, onChange, distanceM, elevationGainM, elevationLoading, elevationError, busy, downloading, onDownload,
+  settings: s, onChange, distanceM, elevationGainM, elevationLoading, elevationError, busy, downloading, onDownload, routeReady,
 }: Props) {
   const isRun = s.sport === "run";
   const word = isRun ? "Run" : "Ride";
@@ -34,6 +35,14 @@ export default function RunDetails({
   const range = SLIDER_RANGE[s.paceUnit];
   const unitValue = toUnitValue(s.paceSecPerKm, s.paceUnit);
   const PaceIcon = isRun ? Footprints : Gauge;
+
+  // Download needs a snapped route and a name
+  const hasName = s.name.trim().length > 0;
+  const ready = routeReady && hasName;
+  const missing = [
+    !routeReady && "Snap a route on the map",
+    !hasName && (routeReady ? `Give your ${word.toLowerCase()} a name` : `give your ${word.toLowerCase()} a name`),
+  ].filter(Boolean) as string[];
 
   function setSport(sport: Sport) {
     if (sport === s.sport) return;
@@ -161,7 +170,7 @@ export default function RunDetails({
           type="text"
           value={s.name}
           maxLength={200}
-          placeholder={defaultActivityName(s.sport, s.hour)}
+          placeholder={`e.g. ${defaultActivityName(s.sport, s.hour)}`}
           onChange={(e) => onChange({ name: e.target.value })}
         />
       </label>
@@ -200,10 +209,20 @@ export default function RunDetails({
         </div>
       </div>
 
-      <button className="download-button" onClick={onDownload} disabled={busy}>
+      <button
+        className={`download-button${ready ? "" : " not-ready"}`}
+        onClick={onDownload}
+        disabled={busy || !ready}
+        aria-describedby={ready ? undefined : "download-requirements"}
+      >
         <Download size={20} />
         {downloading ? "Generating…" : "Download GPX"}
       </button>
+      {!ready && (
+        <p className="rd-hint download-hint" id="download-requirements">
+          {missing.join(" and ")} to download.
+        </p>
+      )}
       {downloading && (
         <p className="rd-hint">Looking up elevation for the route. Long routes can take up to ~30 seconds.</p>
       )}

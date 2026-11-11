@@ -84,6 +84,10 @@ if (fs.existsSync(indexHtml)) {
   // Single-page app: every other GET serves index.html (never cached, so new deploys show up)
   app.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next();
+    // Missing files (e.g. /x.js, or /_vercel/* when not hosted on Vercel) get a 404, not the page
+    if (/\.[a-z0-9]+$/i.test(req.path) || req.path.startsWith("/_vercel/")) {
+      return res.status(404).type("text/plain").send("Not found");
+    }
     res.setHeader("Cache-Control", "no-cache");
     res.sendFile(indexHtml);
   });

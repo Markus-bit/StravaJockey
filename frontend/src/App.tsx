@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
 import { Info, Route as RouteIcon, Upload } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import Toasts, { type Toast } from "./Toasts";
@@ -568,6 +569,8 @@ function updateSettings(patch: Partial<ActivitySettings>) {
         </nav>
       </footer>
       <Toasts toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
+      {/* Vercel Web Analytics: cookieless page-view counting (only sends data on Vercel deployments) */}
+      <Analytics />
     </div>
   );
 }

@@ -30,7 +30,6 @@
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2",
     "pngjs": "^7.0.0",
-    "xmlbuilder2": "^4.0.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

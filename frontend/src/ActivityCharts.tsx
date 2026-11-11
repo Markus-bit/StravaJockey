@@ -67,6 +67,7 @@ export default function ActivityCharts(p: Props) {
         xMax={p.distanceM ?? 0}
         yTick={(v) => `${Math.round(v)}`}
         yUnit="m"
+        minSpan={20}
         onHover={p.onHover}
         state={
           noRoute ? "Snap a route to see elevation"
@@ -88,6 +89,7 @@ export default function ActivityCharts(p: Props) {
         xMax={p.distanceM ?? 0}
         yTick={paceTick}
         yUnit={unitShort}
+        minSpan={speed ? (miles ? 2.5 : 4) : 1 /* km/h or mph, else minutes */}
         invert={!speed /* faster pace (lower number) at the top, like Strava */}
         onHover={p.onHover}
         state={noRoute ? `Snap a route to see ${speed ? "speed" : "pace"}` : !pv ? "loading" : null}
@@ -104,6 +106,7 @@ export default function ActivityCharts(p: Props) {
         xMax={p.distanceM ?? 0}
         yTick={(v) => `${Math.round(v)}`}
         yUnit="bpm"
+        minSpan={20}
         onHover={p.onHover}
         state={
           noRoute ? "Snap a route to see heart rate"
@@ -130,6 +133,7 @@ function ChartCard(props: {
   xUnitM: number;
   yTick: (v: number) => string;
   yUnit: string;
+  minSpan: number;
   invert?: boolean;
   onHover: (d: number | null) => void;
   state: string | null; // null = show chart, "loading", or a message
@@ -175,6 +179,7 @@ function LineChart(props: {
   xUnitM: number;
   yTick: (v: number) => string;
   yUnit: string;
+  minSpan: number; // smallest y-axis range, so tiny variations don't fill the whole chart
   invert?: boolean;
   hoverDistM: number | null;
   onHover: (d: number | null) => void;
@@ -196,7 +201,13 @@ function LineChart(props: {
   const plotH = HEIGHT - PAD.top - PAD.bottom;
 
   const vals = y.filter((v): v is number => v !== null);
-  const ticks = niceTicks(Math.min(...vals), Math.max(...vals), 3);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < props.minSpan) {
+    const mid = (lo + hi) / 2;
+    lo = mid - props.minSpan / 2;
+    hi = mid + props.minSpan / 2;
+  }
+  const ticks = niceTicks(lo, hi, 3);
   const yMin = ticks[0], yMax = ticks[ticks.length - 1];
   const sx = (d: number) => PAD.left + (xMax > 0 ? (d / xMax) * plotW : 0);
   const sy = (v: number) => {

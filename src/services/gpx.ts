@@ -1,50 +1,62 @@
-import { create } from "xmlbuilder2";
 import { MatchedPoint } from "../domain/types";
 
 export type GpxActivityType = "running" | "cycling";
+
+// GPX 1.1 writer. Plain string building (no XML library): the format is small and fixed,
+// and it avoids bundling problems on serverless hosts.
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    // control characters other than tab/newline aren't allowed in XML 1.0
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+}
 
 export function buildGpx(
   points: MatchedPoint[],
   opts: { name?: string; description?: string; type?: GpxActivityType } = {}
 ): string {
-  const name = opts.name || "Generated Route";
+  const name = esc(opts.name || "Generated Route");
+  const desc = opts.description ? esc(opts.description) : null;
   const hasHr = points.some(p => typeof p.heartRateBpm === "number");
 
-  const root = create({ version: "1.0", encoding: "UTF-8" })
-    .ele("gpx", {
-      version: "1.1",
-      creator: "fake-run-backend",
-      xmlns: "http://www.topografix.com/GPX/1/1",
-      "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+  const out: string[] = [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<gpx version="1.1" creator="fake-run-backend" xmlns="http://www.topografix.com/GPX/1/1" ` +
+      `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
       // Garmin TrackPointExtension: standard måte å legge puls i GPX (leses av Strava m.fl.)
-      "xmlns:gpxtpx": "http://www.garmin.com/xmlschemas/TrackPointExtension/v1",
-      "xsi:schemaLocation":
-        "http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd " +
-        "http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd"
-    });
-
-  const meta = root.ele("metadata");
-  meta.ele("name").txt(name);
-  if (opts.description) meta.ele("desc").txt(opts.description);
-  if (points[0]?.timeISO) meta.ele("time").txt(points[0].timeISO);
-
+      `xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" ` +
+      `xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd ` +
+      `http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd">`,
+    `  <metadata>`,
+    `    <name>${name}</name>`,
+  ];
+  if (desc) out.push(`    <desc>${desc}</desc>`);
+  if (points[0]?.timeISO) out.push(`    <time>${esc(points[0].timeISO)}</time>`);
+  out.push(`  </metadata>`, `  <trk>`, `    <name>${name}</name>`);
   // GPX 1.1 krever rekkefølgen name, desc, ..., type, trkseg
-  const trk = root.ele("trk");
-  trk.ele("name").txt(name);
-  if (opts.description) trk.ele("desc").txt(opts.description);
-  if (opts.type) trk.ele("type").txt(opts.type);
-  const seg = trk.ele("trkseg");
+  if (desc) out.push(`    <desc>${desc}</desc>`);
+  if (opts.type) out.push(`    <type>${opts.type}</type>`);
+  out.push(`    <trkseg>`);
 
   for (const p of points) {
-    const trkpt = seg.ele("trkpt", { lat: p.lat.toFixed(7), lon: p.lng.toFixed(7) });
-    if (typeof p.elevationM === "number") trkpt.ele("ele").txt(p.elevationM.toFixed(2));
-    if (p.timeISO) trkpt.ele("time").txt(p.timeISO);
+    out.push(`      <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lng.toFixed(7)}">`);
+    if (typeof p.elevationM === "number") out.push(`        <ele>${p.elevationM.toFixed(2)}</ele>`);
+    if (p.timeISO) out.push(`        <time>${esc(p.timeISO)}</time>`);
     if (hasHr && typeof p.heartRateBpm === "number") {
-      trkpt.ele("extensions")
-        .ele("gpxtpx:TrackPointExtension")
-          .ele("gpxtpx:hr").txt(String(p.heartRateBpm));
+      out.push(
+        `        <extensions>`,
+        `          <gpxtpx:TrackPointExtension>`,
+        `            <gpxtpx:hr>${Math.round(p.heartRateBpm)}</gpxtpx:hr>`,
+        `          </gpxtpx:TrackPointExtension>`,
+        `        </extensions>`
+      );
     }
+    out.push(`      </trkpt>`);
   }
 
-  return root.end({ prettyPrint: true });
+  out.push(`    </trkseg>`, `  </trk>`, `</gpx>`);
+  return out.join("\n");
 }

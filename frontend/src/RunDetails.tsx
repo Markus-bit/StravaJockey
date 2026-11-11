@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
+import DatePicker from "./DatePicker";
 import {
-  Activity, Bike, Calendar, Clock, Footprints, Gauge, Heart, Hexagon, Ruler, Timer, TrendingUp,
+  Activity, Bike, Clock, Footprints, Gauge, Heart, Hexagon, Ruler, Timer, TrendingUp,
 } from "lucide-react";
 import {
   type ActivitySettings, type PaceUnit, type Sport,
@@ -166,17 +167,11 @@ export default function RunDetails({
         />
       </label>
 
-      <label className="rd-field">
+      {/* not a <label>: it would forward clicks inside the calendar to the trigger button */}
+      <div className="rd-field">
         <span className="rd-label">Date</span>
-        <div className="rd-input rd-input--icon">
-          <Calendar size={ICON} />
-          <input
-            type="date"
-            value={s.date}
-            onChange={(e) => onChange({ date: e.target.value })}
-          />
-        </div>
-      </label>
+        <DatePicker label="Date" value={s.date} onChange={(date) => onChange({ date })} />
+      </div>
 
       <div className="rd-field">
         <span className="rd-label">Start Time</span>

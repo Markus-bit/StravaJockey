@@ -1,13 +1,25 @@
 import { MatchedPoint } from "../domain/types";
 import { smoothNoise } from "./noise";
 
-// Legger på pulsdata (heartRateBpm) basert på tid og fart på hvert punkt.
-// Krever at timeISO og distanceOnRouteM er satt.
+// Adds heart rate (heartRateBpm) to every point, based on time and speed.
+// Needs timeISO and distanceOnRouteM on the points.
+//
+// Model (all factors multiply):
+//   warm-up   starts ~25 % lower and levels off over the first few minutes
+//   drift     rises slowly, ~4 % by the end (cardiac drift)
+//   effort    follows speed changes with a ~30 s delay   } both scale with the
+//   wobble    smooth random variation                     } HR variability slider
+// At 0 % variability the heart rate is steady apart from warm-up and drift.
+// Peaks are compressed smoothly below a ceiling instead of being cut off, and the
+// result is scaled so the time-weighted average is exactly avgBpm.
+
+const MIN_BPM = 45;
+
 export function generateHeartRate(opts: {
   points: MatchedPoint[];
-  avgBpm: number;          // ønsket snittpuls
-  variability?: number;    // 0–0.3: hvor mye pulsen svinger (0.1 = ±10 %)
-  rand?: () => number;     // for tester
+  avgBpm: number;          // target average heart rate
+  variability?: number;    // 0–0.3: how much the heart rate moves (0.1 = ±10 %)
+  rand?: () => number;     // for tests / seeded output
 }): MatchedPoint[] {
   const { points, avgBpm, rand = Math.random } = opts;
   if (points.length === 0) return [];
@@ -19,35 +31,51 @@ export function generateHeartRate(opts: {
   const totalDist = points[points.length - 1].distanceOnRouteM || 0;
   const avgSpeed = totalDist / totalSec;
 
-  // Svingninger over ~10, 4 og 1.5 minutter
+  // Random waves over ~10, 4 and 1.5 minutes
   const noise = smoothNoise([600, 240, 90], rand);
+  // How strongly speed changes show up in the heart rate: 0 at 0 %, 0.6 at the 30 % maximum
+  const effortCoupling = 0.6 * (variability / 0.3);
 
-  // Pulsen følger innsatsen med forsinkelse: glatt farten med en EMA (~30 s)
   let effort = 1;
   const raw = points.map((p, i) => {
     if (i > 0) {
       const dt = Math.max(tSec[i] - tSec[i - 1], 0.001);
       const speed = (p.distanceOnRouteM! - points[i - 1].distanceOnRouteM!) / dt;
       const ratio = avgSpeed > 0 ? speed / avgSpeed : 1;
-      const alpha = 1 - Math.exp(-dt / 30);
+      const alpha = 1 - Math.exp(-dt / 30); // heart rate lags behind effort
       effort += alpha * (ratio - effort);
     }
     const t = tSec[i];
-    const warmup = 1 - 0.25 * Math.exp(-t / 120);   // starter ~25 % lavere, flater ut etter noen min
-    const drift = 1 + 0.04 * (t / totalSec);        // "cardiac drift" utover økta
-    const fromEffort = 1 + 0.6 * (effort - 1);      // raskere -> høyere puls
+    const warmup = 1 - 0.25 * Math.exp(-t / 120);
+    const drift = 1 + 0.04 * (t / totalSec);
+    const fromEffort = 1 + effortCoupling * (effort - 1);
     const wobble = 1 + variability * noise(t);
     return warmup * drift * fromEffort * wobble;
   });
 
-  // Skaler slik at tidsvektet snitt blir avgBpm (slik Strava regner snittpuls)
-  let sum = 0;
-  for (let i = 1; i < raw.length; i++) sum += ((raw[i] + raw[i - 1]) / 2) * (tSec[i] - tSec[i - 1]);
-  const mean = raw.length > 1 && sum > 0 ? sum / totalSec : raw[0];
-  const scale = avgBpm / mean;
+  // Soft ceiling: values approach `ceiling` but never exceed it
+  const ceiling = Math.min(220, Math.max(205, avgBpm + 10));
+  const knee = ceiling - 15;
+  const soften = (bpm: number) => {
+    const capped = bpm <= knee ? bpm : knee + 15 * Math.tanh((bpm - knee) / 15);
+    return Math.max(capped, MIN_BPM);
+  };
 
-  return points.map((p, i) => ({
-    ...p,
-    heartRateBpm: Math.round(Math.min(Math.max(raw[i] * scale, 45), 220))
-  }));
+  // Find the scale that makes the time-weighted average exactly avgBpm after softening
+  const timeWeightedMean = (vals: number[]) => {
+    if (vals.length < 2) return vals[0] ?? 0;
+    let sum = 0;
+    for (let i = 1; i < vals.length; i++) sum += ((vals[i] + vals[i - 1]) / 2) * (tSec[i] - tSec[i - 1]);
+    return sum / totalSec;
+  };
+  let scale = avgBpm / (timeWeightedMean(raw) || 1);
+  let bpm = raw.map(r => soften(r * scale));
+  for (let iter = 0; iter < 20; iter++) {
+    const mean = timeWeightedMean(bpm);
+    if (Math.abs(mean - avgBpm) < 0.05) break;
+    scale *= avgBpm / mean;
+    bpm = raw.map(r => soften(r * scale));
+  }
+
+  return points.map((p, i) => ({ ...p, heartRateBpm: Math.round(bpm[i]) }));
 }

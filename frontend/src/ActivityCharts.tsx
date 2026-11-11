@@ -35,9 +35,15 @@ export default function ActivityCharts(p: Props) {
   const noRoute = p.distanceM === null;
 
   // ---- elevation
+  // metres, or feet when miles are selected
   const ele = p.elevation;
-  const eleVals = ele?.elevationM.filter((v): v is number => v !== null) ?? [];
-  const eleSummary = eleVals.length ? `${Math.round(Math.min(...eleVals))}–${Math.round(Math.max(...eleVals))} m` : "";
+  const eleUnit = miles ? "ft" : "m";
+  const eleY = useMemo(
+    () => ele?.elevationM.map((v) => (v === null ? null : miles ? v * 3.28084 : v)) ?? [],
+    [ele, miles]
+  );
+  const eleVals = eleY.filter((v): v is number => v !== null);
+  const eleSummary = eleVals.length ? `${Math.round(Math.min(...eleVals))}–${Math.round(Math.max(...eleVals))} ${eleUnit}` : "";
 
   // ---- pace / speed (in the selected unit)
   const pv = p.preview;
@@ -58,16 +64,16 @@ export default function ActivityCharts(p: Props) {
       <ChartCard
         title="Elevation"
         summary={eleSummary}
-        hoverText={(d) => valueAt(ele?.distM, ele?.elevationM, d, (v) => `${Math.round(v)} m`)}
+        hoverText={(d) => valueAt(ele?.distM, eleY, d, (v) => `${Math.round(v)} ${eleUnit}`)}
         hoverDistM={p.hoverDistM}
         xFormat={xFormat}
         xUnitM={xUnitM}
         x={ele?.distM ?? []}
-        y={ele?.elevationM ?? []}
+        y={eleY}
         xMax={p.distanceM ?? 0}
         yTick={(v) => `${Math.round(v)}`}
-        yUnit="m"
-        minSpan={20}
+        yUnit={eleUnit}
+        minSpan={miles ? 60 : 20}
         onHover={p.onHover}
         state={
           noRoute ? "Snap a route to see elevation"

@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
 import { Info, Route as RouteIcon, Upload } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import Toasts, { type Toast } from "./Toasts";
+import { initialMapView, saveMapView } from "./mapStart";
 import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
 import {
   type ActivitySettings, type Sport,
-  initialSettings, startTimeISO,
+  initialSettings, localDateString, startTimeISO,
 } from "./activity";
 
 // Punktavstand i genererte spor (meter). Samme verdi for forhåndsvisning og GPX
@@ -87,16 +89,17 @@ export default function App() {
       return;
     }
 
+    const startView = initialMapView();
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/streets-v12", // <- Viktig
-      center: [10.75, 59.91] as LngLatLike, // Oslo
-      zoom: 12,
+      center: startView.center as LngLatLike, // last position, or a city in the visitor's time zone
+      zoom: startView.zoom,
     });
 
     // nyttig for feilsøking
     map.on("error", (e) =>
-      console.error("Mapbox error:", (e as any)?.error?.message || e)
+      console.error("Mapbox error:", (e as { error?: { message?: string } })?.error?.message || e)
     );
     map.on("styledata", () => {
       // console.log("styledata");
@@ -160,6 +163,12 @@ export default function App() {
           "circle-stroke-color": "#fff",
         },
       });
+    });
+
+    // Remember where the visitor left the map (this browser only)
+    map.on("moveend", () => {
+      const c = map.getCenter();
+      saveMapView({ center: [c.lng, c.lat], zoom: map.getZoom() });
     });
 
     // Klikk for å legge til waypoint
@@ -343,7 +352,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
 }
 
 function updateSettings(patch: Partial<ActivitySettings>) {
-  setSettings((prev) => ({ ...prev, ...patch }));
+  setSettings((prev) => notInFuture({ ...prev, ...patch }));
   // Run og Bike bruker ulike veinett (gangstier vs sykkelveier): snapp ruten på nytt
   if (patch.sport && patch.sport !== settings.sport && routePoints.length >= 2 && waypoints.length < 2) {
     snapPoints(routePoints, patch.sport);
@@ -354,7 +363,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     const map = mapRef.current!;
     if (!coords.length) return;
     const b = new mapboxgl.LngLatBounds(coords[0], coords[0]);
-    coords.forEach((c) => b.extend(c as any));
+    coords.forEach((c) => b.extend(c));
     map.fitBounds(b, { padding: 40, duration: 400 });
   }
 
@@ -368,7 +377,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       properties: {},
     };
     // Tøm stiplet “temp-line” (waypoints-kilden tømmes via setWaypoints([]))
-    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
+    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
 }
 
   function clearSourcesOnMap() {
@@ -385,9 +394,9 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       features: [],
     };
 
-    (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
-    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
-    (map.getSource("waypoints") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyFC as any);
+    (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
+    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
+    (map.getSource("waypoints") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyFC);
 }
   function clearAll() {
     setWaypoints([]);
@@ -560,6 +569,8 @@ function updateSettings(patch: Partial<ActivitySettings>) {
         </nav>
       </footer>
       <Toasts toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
+      {/* Vercel Web Analytics: cookieless page-view counting (only sends data on Vercel deployments) */}
+      <Analytics />
     </div>
   );
 }
@@ -597,4 +608,13 @@ function pointAtDistance(coords: [number, number][], dists: number[], d: number)
 // The brand color from the stylesheet (--brand in index.css), for map layers that can't use CSS
 function brandColor() {
   return getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#fc4c02";
+}
+
+// An activity can't start in the future: clamp date + start time to now
+function notInFuture(s: ActivitySettings): ActivitySettings {
+  const [y, m, d] = s.date.split("-").map(Number);
+  const start = new Date(y, (m || 1) - 1, d || 1, s.hour, s.minute);
+  const now = new Date();
+  if (isNaN(start.getTime()) || start <= now) return s;
+  return { ...s, date: localDateString(now), hour: now.getHours(), minute: now.getMinutes() };
 }

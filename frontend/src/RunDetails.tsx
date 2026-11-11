@@ -6,7 +6,7 @@ import {
 import {
   type ActivitySettings, type PaceUnit, type Sport,
   DEFAULT_PACE, SLIDER_RANGE, UNITS_FOR_SPORT,
-  defaultActivityName, formatDuration, formatPaceValue, fromUnitValue, heartRateLabel,
+  defaultActivityName, formatDuration, localDateString, formatPaceValue, fromUnitValue, heartRateLabel,
   hrVariabilityLabel, isSpeedUnit, paceVariabilityLabel, toUnitValue, usesMiles,
 } from "./activity";
 
@@ -58,7 +58,10 @@ export default function RunDetails({
       <span />
       <span />
     </span>
-  ) : elevationGainM === null ? "–" : `${elevationGainM}m`;
+  ) : elevationGainM === null ? "–" : miles ? `${Math.round(elevationGainM * 3.28084)} ft` : `${elevationGainM} m`;
+  // Start time can't be in the future (only matters when the date is today)
+  const now = new Date();
+  const isToday = s.date === localDateString(now);
 
   return (
     <section className="controls-panel run-details">
@@ -178,7 +181,7 @@ export default function RunDetails({
       {/* not a <label>: it would forward clicks inside the calendar to the trigger button */}
       <div className="rd-field">
         <span className="rd-label">Date</span>
-        <DatePicker label="Date" value={s.date} onChange={(date) => onChange({ date })} />
+        <DatePicker label="Date" value={s.date} onChange={(date) => onChange({ date })} noFuture />
       </div>
 
       <div className="rd-field">
@@ -192,7 +195,7 @@ export default function RunDetails({
             onChange={(e) => onChange({ hour: Number(e.target.value) })}
           >
             {range24().map((h) => (
-              <option key={h} value={h}>{pad2(h)}</option>
+              <option key={h} value={h} disabled={isToday && h > now.getHours()}>{pad2(h)}</option>
             ))}
           </select>
           <span className="time-sep">:</span>
@@ -203,7 +206,9 @@ export default function RunDetails({
             onChange={(e) => onChange({ minute: Number(e.target.value) })}
           >
             {range60().map((m) => (
-              <option key={m} value={m}>{pad2(m)}</option>
+              <option key={m} value={m} disabled={isToday && s.hour === now.getHours() && m > now.getMinutes()}>
+                {pad2(m)}
+              </option>
             ))}
           </select>
         </div>

@@ -32,8 +32,14 @@ function formatLongDate(d: Date) {
 }
 
 export default function DatePicker({
-  value, onChange, label,
-}: { value: string; onChange: (v: string) => void; label: string }) {
+  value, onChange, label, noFuture = false,
+}: { value: string; onChange: (v: string) => void; label: string; noFuture?: boolean }) {
+  // Last selectable day (end of today) when future dates are blocked
+  const isAfterMax = (d: Date) => {
+    if (!noFuture) return false;
+    const now = new Date();
+    return d > new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  };
   const selected = parseValue(value);
   const [open, setOpen] = useState(false);
   // Always opens above the field. position: fixed so the scrolling panel can't clip it.
@@ -103,6 +109,7 @@ export default function DatePicker({
   }, [open, focusDay]);
 
   function moveFocus(d: Date) {
+    if (isAfterMax(d)) d = new Date(); // keyboard can't move past today
     setFocusDay(d);
     if (d.getMonth() !== view.getMonth() || d.getFullYear() !== view.getFullYear()) setView(d);
   }
@@ -127,9 +134,11 @@ export default function DatePicker({
 
   const shiftMonth = (n: number) => {
     const next = new Date(view.getFullYear(), view.getMonth() + n, 1);
+    if (isAfterMax(next)) return;
     setView(next);
     setFocusDay(next);
   };
+  const nextMonthBlocked = isAfterMax(new Date(view.getFullYear(), view.getMonth() + 1, 1));
 
   return (
     <div
@@ -160,7 +169,7 @@ export default function DatePicker({
             <span className="datepicker-title" aria-live="polite">
               {MONTHS[view.getMonth()]} {view.getFullYear()}
             </span>
-            <button type="button" className="datepicker-nav" aria-label="Next month" onClick={() => shiftMonth(1)}>
+            <button type="button" className="datepicker-nav" aria-label="Next month" onClick={() => shiftMonth(1)} disabled={nextMonthBlocked}>
               <ChevronRight size={18} />
             </button>
           </div>
@@ -173,9 +182,11 @@ export default function DatePicker({
               const outside = d.getMonth() !== view.getMonth();
               const isSelected = !!selected && sameDay(d, selected);
               const isToday = sameDay(d, today);
+              const future = isAfterMax(d);
               const cls = [
                 "datepicker-day",
                 outside && "outside",
+                future && "disabled",
                 isToday && "today",
                 isSelected && "selected",
               ].filter(Boolean).join(" ");
@@ -189,6 +200,7 @@ export default function DatePicker({
                   tabIndex={sameDay(d, focusDay) ? 0 : -1}
                   aria-selected={isSelected}
                   aria-label={formatLongDate(d)}
+                  disabled={future}
                   onClick={() => pick(d)}
                 >
                   {d.getDate()}

@@ -68,7 +68,13 @@ export default function TermsContent() {
       <h3>8. Privacy</h3>
       <p>We keep this simple and collect as little as possible:</p>
       <ul>
-        <li>There are no user accounts, no cookies and no analytics or tracking.</li>
+        <li>There are no user accounts and no cookies.</li>
+        <li>
+          We count visits with Vercel Web Analytics. It uses no cookies and stores no IP addresses or
+          other identifiers that could track you across sites; visits are only recognised for 24 hours
+          by an anonymous hash. We see aggregated statistics only: which page was opened, the referring
+          site, approximate location (country/city), browser, operating system and device type.
+        </li>
         <li>
           The points you click and the route generated from them are sent to our server to build the
           route and the file. To do that, the server sends the route coordinates to Mapbox (routing

@@ -13,6 +13,7 @@ import { logger } from "./logger";
 import type { LngLat, MatchedPoint } from "./domain/types";
 import { config } from "./config";
 import { HttpError, sendError } from "./errors";
+import { cachedRoute, routeKey } from "./services/routeCache";
 
 const router = Router();
 
@@ -38,7 +39,11 @@ function getMapboxToken(): string {
 
 // Snap to roads and refuse routes longer than the configured maximum
 async function snapWithinLimits(points: LngLat[], profile: "walking" | "cycling" | "driving", preferMatch?: boolean) {
-  const snapped = await snapToRoad(points, profile, getMapboxToken(), preferMatch);
+  // Cached: the snap preview, the elevation stats and the GPX download reuse one Mapbox call
+  const token = getMapboxToken();
+  const snapped = await cachedRoute(routeKey(points, profile, preferMatch), () =>
+    snapToRoad(points, profile, token, preferMatch)
+  );
   const dists = accumulateDistances(snapped);
   const km = (dists[dists.length - 1] ?? 0) / 1000;
   if (km > config.maxRouteKm) {

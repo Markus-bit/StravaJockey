@@ -10,7 +10,7 @@ import {
   hrVariabilityLabel, isSpeedUnit, paceVariabilityLabel, toUnitValue, usesMiles,
 } from "./activity";
 
-const ICON = 18;
+const ICON = 20;
 
 type Props = {
   settings: ActivitySettings;
@@ -68,11 +68,12 @@ export default function RunDetails({
         </div>
       </div>
 
-      <div className="stats-card" aria-label={`${word} stats`}>
+      <div className="stats-card">
+        <h3>{word} Stats</h3>
         <div className="stats-grid">
           <Stat icon={<Ruler size={ICON} />} value={distanceText} label="Distance" />
           <Stat icon={<Timer size={ICON} />} value={durationText} label="Duration" />
-          <Stat icon={<TrendingUp size={ICON} />} value={elevationText} label="Elevation" />
+          <Stat icon={<TrendingUp size={ICON} />} value={elevationText} label="Elevation Gain" />
           <Stat
             icon={isRun ? <Footprints size={ICON} /> : <Bike size={ICON} />}
             value={formatPaceValue(s.paceSecPerKm, s.paceUnit)}
@@ -82,114 +83,77 @@ export default function RunDetails({
         {!elevationLoading && elevationError && <p className="stats-note">{elevationError}</p>}
       </div>
 
-      <div className="rd-grid2">
-        <Slider
-          icon={<PaceIcon size={ICON} />}
-          label={speed ? "Speed" : "Pace"}
-          valueText={formatPaceValue(s.paceSecPerKm, s.paceUnit)}
-          valueExtra={
-            <select
-              className="unit-select"
-              aria-label={speed ? "Speed unit" : "Pace unit"}
-              value={s.paceUnit}
-              onChange={(e) => onChange({ paceUnit: e.target.value as PaceUnit })}
-            >
-              {UNITS_FOR_SPORT[s.sport].map((u) => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
-          }
-          min={range.min}
-          max={range.max}
-          step={range.step}
-          value={Math.min(Math.max(unitValue, range.min), range.max)}
-          onChange={(v) => onChange({ paceSecPerKm: fromUnitValue(v, s.paceUnit) })}
-          hint={speed ? "Average speed" : "Average pace"}
-        />
-        <Slider
-          icon={<Hexagon size={ICON} />}
-          label="Inconsistency"
-          valueText={`${s.paceVariabilityPct}%`}
-          min={0}
-          max={50}
-          step={1}
-          value={s.paceVariabilityPct}
-          onChange={(v) => onChange({ paceVariabilityPct: v })}
-          hint={paceVariabilityLabel(s.paceVariabilityPct)}
+      <div className="rd-row">
+        <span className="rd-label">{speed ? "Speed Unit" : "Pace Unit"}</span>
+        <select
+          className="rd-select"
+          value={s.paceUnit}
+          onChange={(e) => onChange({ paceUnit: e.target.value as PaceUnit })}
+        >
+          {UNITS_FOR_SPORT[s.sport].map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+      </div>
+
+      <Slider
+        icon={<PaceIcon size={ICON} />}
+        label={`Average ${speed ? "Speed" : "Pace"} (${s.paceUnit})`}
+        valueText={`${formatPaceValue(s.paceSecPerKm, s.paceUnit)} ${s.paceUnit}`}
+        min={range.min}
+        max={range.max}
+        step={range.step}
+        value={Math.min(Math.max(unitValue, range.min), range.max)}
+        onChange={(v) => onChange({ paceSecPerKm: fromUnitValue(v, s.paceUnit) })}
+      />
+
+      <Slider
+        icon={<Hexagon size={ICON} />}
+        label={`${speed ? "Speed" : "Pace"} Inconsistency`}
+        valueText={`${s.paceVariabilityPct}%`}
+        min={0}
+        max={50}
+        step={1}
+        value={s.paceVariabilityPct}
+        onChange={(v) => onChange({ paceVariabilityPct: v })}
+        hint={paceVariabilityLabel(s.paceVariabilityPct)}
+      />
+
+      <div className="rd-row">
+        <span className="rd-label">Include Heart Rate Data</span>
+        <Switch
+          checked={s.hrEnabled}
+          onChange={(hrEnabled) => onChange({ hrEnabled })}
+          label="Include heart rate data"
         />
       </div>
 
-      <div className="rd-section">
-        <div className="rd-row">
-          <span className="rd-label">Heart Rate Data</span>
-          <Switch
-            checked={s.hrEnabled}
-            onChange={(hrEnabled) => onChange({ hrEnabled })}
-            label="Include heart rate data"
+      {s.hrEnabled && (
+        <>
+          <Slider
+            icon={<Heart size={ICON} />}
+            label="Average Heart Rate"
+            valueText={`${s.hrAvgBpm} bpm`}
+            min={80}
+            max={200}
+            step={1}
+            value={s.hrAvgBpm}
+            onChange={(v) => onChange({ hrAvgBpm: v })}
+            hint={heartRateLabel(s.hrAvgBpm)}
           />
-        </div>
-        {s.hrEnabled && (
-          <div className="rd-grid2">
-            <Slider
-              icon={<Heart size={ICON} />}
-              label="Average"
-              valueText={`${s.hrAvgBpm} bpm`}
-              min={80}
-              max={200}
-              step={1}
-              value={s.hrAvgBpm}
-              onChange={(v) => onChange({ hrAvgBpm: v })}
-              hint={heartRateLabel(s.hrAvgBpm)}
-            />
-            <Slider
-              icon={<Activity size={ICON} />}
-              label="Variability"
-              valueText={`${s.hrVariabilityPct}%`}
-              min={0}
-              max={30}
-              step={1}
-              value={s.hrVariabilityPct}
-              onChange={(v) => onChange({ hrVariabilityPct: v })}
-              hint={hrVariabilityLabel(s.hrVariabilityPct)}
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="rd-grid2">
-        {/* not a <label>: it would forward clicks inside the calendar to the trigger button */}
-        <div className="rd-field">
-          <span className="rd-label">Date</span>
-          <DatePicker label="Date" value={s.date} onChange={(date) => onChange({ date })} />
-        </div>
-        <div className="rd-field">
-          <span className="rd-label">Start Time</span>
-          <div className="time-row">
-            <Clock size={ICON} className="muted-icon" />
-            <select
-              className="rd-select"
-              aria-label="Start hour"
-              value={s.hour}
-              onChange={(e) => onChange({ hour: Number(e.target.value) })}
-            >
-              {range24().map((h) => (
-                <option key={h} value={h}>{pad2(h)}</option>
-              ))}
-            </select>
-            <span className="time-sep">:</span>
-            <select
-              className="rd-select"
-              aria-label="Start minute"
-              value={s.minute}
-              onChange={(e) => onChange({ minute: Number(e.target.value) })}
-            >
-              {range60().map((m) => (
-                <option key={m} value={m}>{pad2(m)}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+          <Slider
+            icon={<Activity size={ICON} />}
+            label="Heart Rate Variability"
+            valueText={`${s.hrVariabilityPct}%`}
+            min={0}
+            max={30}
+            step={1}
+            value={s.hrVariabilityPct}
+            onChange={(v) => onChange({ hrVariabilityPct: v })}
+            hint={hrVariabilityLabel(s.hrVariabilityPct)}
+          />
+        </>
+      )}
 
       <label className="rd-field">
         <span className="rd-label">{word} Name</span>
@@ -203,11 +167,45 @@ export default function RunDetails({
         />
       </label>
 
+      {/* not a <label>: it would forward clicks inside the calendar to the trigger button */}
+      <div className="rd-field">
+        <span className="rd-label">Date</span>
+        <DatePicker label="Date" value={s.date} onChange={(date) => onChange({ date })} />
+      </div>
+
+      <div className="rd-field">
+        <span className="rd-label">Start Time</span>
+        <div className="time-row">
+          <Clock size={ICON} className="muted-icon" />
+          <select
+            className="rd-select"
+            aria-label="Start hour"
+            value={s.hour}
+            onChange={(e) => onChange({ hour: Number(e.target.value) })}
+          >
+            {range24().map((h) => (
+              <option key={h} value={h}>{pad2(h)}</option>
+            ))}
+          </select>
+          <span className="time-sep">:</span>
+          <select
+            className="rd-select"
+            aria-label="Start minute"
+            value={s.minute}
+            onChange={(e) => onChange({ minute: Number(e.target.value) })}
+          >
+            {range60().map((m) => (
+              <option key={m} value={m}>{pad2(m)}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <label className="rd-field">
         <span className="rd-label">Description</span>
         <textarea
           className="rd-input"
-          rows={2}
+          rows={3}
           maxLength={2000}
           placeholder={`How did the ${word.toLowerCase()} go?`}
           value={s.description}
@@ -222,8 +220,10 @@ export default function RunDetails({
         <button className="secondary" onClick={onClear} disabled={busy}>
           Clear
         </button>
-        {downloading && <span className="rd-hint">Long routes can take up to ~30 s</span>}
       </div>
+      {downloading && (
+        <p className="rd-hint">Looking up elevation for the route. Long routes can take up to ~30 seconds.</p>
+      )}
     </section>
   );
 }
@@ -248,7 +248,6 @@ function Slider(props: {
   value: number;
   onChange: (v: number) => void;
   hint?: string;
-  valueExtra?: ReactNode; // e.g. a unit picker next to the value
 }) {
   const fill = ((props.value - props.min) / (props.max - props.min)) * 100;
   return (
@@ -258,10 +257,7 @@ function Slider(props: {
           <span className="accent-icon">{props.icon}</span>
           {props.label}
         </span>
-        <span className="rd-slider-value">
-          {props.valueText}
-          {props.valueExtra}
-        </span>
+        <span className="rd-slider-value">{props.valueText}</span>
       </div>
       <input
         type="range"

@@ -552,6 +552,17 @@ textarea.rd-input {
 .datepicker-day:hover {
   background: var(--brand-tint-strong);
 }
+.datepicker-day.disabled,
+.datepicker-day:disabled {
+  color: #d1d5db;
+  cursor: not-allowed;
+  background: transparent;
+  text-decoration: line-through;
+}
+.datepicker-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 .datepicker-day.outside {
   color: #c4c8cf;
 }

@@ -5,10 +5,11 @@ import { Info, Route as RouteIcon, Upload } from "lucide-react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import Toasts, { type Toast } from "./Toasts";
+import { initialMapView, saveMapView } from "./mapStart";
 import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
 import {
   type ActivitySettings, type Sport,
-  initialSettings, startTimeISO,
+  initialSettings, localDateString, startTimeISO,
 } from "./activity";
 
 // Punktavstand i genererte spor (meter). Samme verdi for forhåndsvisning og GPX
@@ -87,11 +88,12 @@ export default function App() {
       return;
     }
 
+    const startView = initialMapView();
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/streets-v12", // <- Viktig
-      center: [10.75, 59.91] as LngLatLike, // Oslo
-      zoom: 12,
+      center: startView.center as LngLatLike, // last position, or a city in the visitor's time zone
+      zoom: startView.zoom,
     });
 
     // nyttig for feilsøking
@@ -160,6 +162,12 @@ export default function App() {
           "circle-stroke-color": "#fff",
         },
       });
+    });
+
+    // Remember where the visitor left the map (this browser only)
+    map.on("moveend", () => {
+      const c = map.getCenter();
+      saveMapView({ center: [c.lng, c.lat], zoom: map.getZoom() });
     });
 
     // Klikk for å legge til waypoint
@@ -343,7 +351,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
 }
 
 function updateSettings(patch: Partial<ActivitySettings>) {
-  setSettings((prev) => ({ ...prev, ...patch }));
+  setSettings((prev) => notInFuture({ ...prev, ...patch }));
   // Run og Bike bruker ulike veinett (gangstier vs sykkelveier): snapp ruten på nytt
   if (patch.sport && patch.sport !== settings.sport && routePoints.length >= 2 && waypoints.length < 2) {
     snapPoints(routePoints, patch.sport);
@@ -597,4 +605,13 @@ function pointAtDistance(coords: [number, number][], dists: number[], d: number)
 // The brand color from the stylesheet (--brand in index.css), for map layers that can't use CSS
 function brandColor() {
   return getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#fc4c02";
+}
+
+// An activity can't start in the future: clamp date + start time to now
+function notInFuture(s: ActivitySettings): ActivitySettings {
+  const [y, m, d] = s.date.split("-").map(Number);
+  const start = new Date(y, (m || 1) - 1, d || 1, s.hour, s.minute);
+  const now = new Date();
+  if (isNaN(start.getTime()) || start <= now) return s;
+  return { ...s, date: localDateString(now), hour: now.getHours(), minute: now.getMinutes() };
 }

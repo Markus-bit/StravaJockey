@@ -36,6 +36,8 @@ export default function DatePicker({
 }: { value: string; onChange: (v: string) => void; label: string }) {
   const selected = parseValue(value);
   const [open, setOpen] = useState(false);
+  // The popover is position: fixed (so the scrolling panel can't clip it); these are its coordinates
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0 });
   // month shown in the calendar, and the day that has keyboard focus
   const [view, setView] = useState(() => selected ?? new Date());
   const [focusDay, setFocusDay] = useState(() => selected ?? new Date());
@@ -43,10 +45,22 @@ export default function DatePicker({
   const gridRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // Below the field if it fits in the window, otherwise above it
+  function place() {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const POPOVER_H = 370, POPOVER_W = 300, GAP = 8, MARGIN = 8;
+    const left = Math.max(MARGIN, Math.min(rect.left, window.innerWidth - POPOVER_W - MARGIN));
+    const below = window.innerHeight - rect.bottom;
+    if (below >= POPOVER_H + GAP || below >= rect.top) setPos({ left, top: rect.bottom + GAP });
+    else setPos({ left, bottom: window.innerHeight - rect.top + GAP });
+  }
+
   function openCalendar() {
     const start = selected ?? new Date();
     setView(start);
     setFocusDay(start);
+    place();
     setOpen(true);
   }
 
@@ -68,6 +82,17 @@ export default function DatePicker({
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // Follow the field when the window is resized or anything scrolls
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
   }, [open]);
 
   // Keep keyboard focus on the focused day
@@ -128,7 +153,12 @@ export default function DatePicker({
       </button>
 
       {open && (
-        <div className="datepicker-popover" role="dialog" aria-label="Choose date">
+        <div
+          className="datepicker-popover"
+          style={pos}
+          role="dialog"
+          aria-label="Choose date"
+        >
           <div className="datepicker-head">
             <button type="button" className="datepicker-nav" aria-label="Previous month" onClick={() => shiftMonth(-1)}>
               <ChevronLeft size={18} />

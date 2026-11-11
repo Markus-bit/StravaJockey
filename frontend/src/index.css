@@ -18,7 +18,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid #e5e7eb;
   background: #fff;
 }
@@ -44,9 +44,8 @@ html, body, #root {
 .content {
   flex: 1;
   display: flex;
-  gap: 24px;
-  padding: 24px 48px;
-  padding-left: 24px;
+  gap: 20px;
+  padding: 16px 24px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -405,10 +404,8 @@ textarea.rd-input {
   transform: rotate(180deg);
 }
 .datepicker-popover {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 8px);
-  left: 0;
+  position: fixed; /* placed by DatePicker.tsx; fixed so the scrolling panel can't clip it */
+  z-index: 50;
   width: min(320px, 100%);
   padding: 14px;
   background: #fff;
@@ -649,7 +646,7 @@ input[type="range"]:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 48px;
+  padding: 12px 24px;
   border-top: 1px solid #e5e7eb;
   background: #fff;
   font-size: 14px;
@@ -867,4 +864,177 @@ input[type="range"]:focus-visible {
 }
 .terms li {
   margin-bottom: 6px;
+}
+
+/* ---------- Compact Run Details: fits a laptop screen without scrolling ---------- */
+.run-details {
+  gap: 12px;
+  padding: 16px 22px;
+}
+.rd-header h2 {
+  font-size: 20px;
+}
+.sport-toggle {
+  font-size: 14px;
+  gap: 8px;
+}
+.stats-card {
+  padding: 12px 8px;
+}
+.stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  row-gap: 0;
+  column-gap: 4px;
+}
+.stat {
+  gap: 2px;
+}
+.stat-icon {
+  margin-bottom: 2px;
+}
+.stat strong {
+  font-size: 17px;
+  white-space: nowrap;
+}
+.stat-label {
+  font-size: 12px;
+}
+.stats-note {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.rd-grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+.rd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rd-label {
+  font-size: 14px;
+}
+.rd-field {
+  gap: 6px;
+  min-width: 0;
+}
+.rd-input,
+.rd-select {
+  font-size: 14px;
+  padding: 8px 10px;
+}
+textarea.rd-input {
+  min-height: 0;
+}
+.rd-slider {
+  gap: 6px;
+  min-width: 0;
+}
+.rd-slider-label {
+  font-size: 14px;
+  gap: 6px;
+}
+.rd-slider-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 15px;
+}
+.rd-hint {
+  margin: 0;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+input[type="range"] {
+  height: 18px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+}
+input[type="range"]::-moz-range-track,
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+}
+.switch {
+  width: 42px;
+  height: 24px;
+}
+.switch-knob {
+  width: 18px;
+  height: 18px;
+}
+.switch.on .switch-knob {
+  transform: translateX(18px);
+}
+/* unit picker inside the pace value: looks like part of the orange value */
+.unit-select {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.unit-select:hover {
+  background: #fff1ea;
+}
+.unit-select:focus-visible {
+  outline: 2px solid rgba(252, 76, 2, 0.5);
+}
+.time-row {
+  gap: 6px;
+}
+.time-row .rd-select {
+  min-width: 0;
+  flex: 1;
+}
+.datepicker-trigger {
+  gap: 8px;
+}
+.datepicker-value {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.datepicker-popover {
+  width: 300px;
+}
+/* same height for every slider head, so side-by-side sliders line up
+   (the pace one contains the unit dropdown) */
+.rd-slider-head {
+  height: 22px;
+}
+.unit-select {
+  height: 22px;
+}
+.action-row {
+  align-items: center;
+}
+.action-row button {
+  padding: 9px 16px;
+}
+@media (max-width: 560px) {
+  .rd-grid2 {
+    grid-template-columns: 1fr;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 12px;
+  }
 }

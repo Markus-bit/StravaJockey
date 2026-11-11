@@ -90,25 +90,25 @@ export function defaultActivityName(sport: Sport, hour: number): string {
 }
 
 export function paceVariabilityLabel(pct: number): string {
-  if (pct < 5) return "Very steady pace (treadmill-like)";
-  if (pct < 15) return "Natural pace variation";
-  if (pct < 30) return "Noticeable pace changes (rolling terrain or mixed effort)";
-  return "High pace variability (challenging terrain or training)";
+  if (pct < 5) return "Very steady";
+  if (pct < 15) return "Natural variation";
+  if (pct < 30) return "Rolling terrain / mixed effort";
+  return "Hard terrain or intervals";
 }
 
 export function heartRateLabel(bpm: number): string {
-  if (bpm < 110) return "Very light, recovery effort";
-  if (bpm < 130) return "Light, easy effort";
-  if (bpm < 145) return "Moderate, aerobic effort";
-  if (bpm < 165) return "High intensity, vigorous effort";
-  if (bpm < 180) return "Very hard, threshold effort";
+  if (bpm < 110) return "Recovery";
+  if (bpm < 130) return "Easy effort";
+  if (bpm < 145) return "Moderate, aerobic";
+  if (bpm < 165) return "Vigorous effort";
+  if (bpm < 180) return "Threshold";
   return "Maximum effort";
 }
 
 export function hrVariabilityLabel(pct: number): string {
-  if (pct < 5) return "Very steady heart rate";
-  if (pct < 15) return "Normal heart rate variation";
-  return "High heart rate variability (intervals or challenging terrain)";
+  if (pct < 5) return "Very steady";
+  if (pct < 15) return "Normal variation";
+  return "Intervals or hilly terrain";
 }
 
 export function localDateString(d: Date): string {

@@ -89,25 +89,25 @@ const HOW_IT_WORKS: Content = {
 };
 
 const HOW_TO_UPLOAD: Content = {
-  title: "How to upload to Strava",
-  intro: "Strava's phone app can't upload files, so use a browser (a computer works best).",
+  title: "How to upload",
+  intro: "Most fitness platforms only accept activity files on their website, not in the phone app, so use a browser (a computer works best).",
   steps: [
     {
-      title: "Open Strava in a browser",
-      text: "Go to strava.com and log in.",
+      title: "Open your platform in a browser",
+      text: "Go to the website of the fitness platform you use and log in.",
     },
     {
-      title: "Go to Upload activity",
-      text: "Click the orange “+” button in the top right corner and choose “Upload activity”, then pick “File”.",
+      title: "Find the upload option",
+      text: "Look for “Upload activity” or “Import”. It's usually in the main menu or behind a “+” button. Choose to upload a file.",
     },
     {
       title: "Choose the GPX file",
-      text: "Click “Choose files” and select the .gpx file you downloaded (usually in your Downloads folder).",
+      text: "Select the .gpx file you downloaded (usually in your Downloads folder).",
     },
     {
       title: "Check the details and save",
-      text: "Strava shows the activity before saving. Check the name, activity type and description, then press “Save & View”.",
+      text: "Most platforms show the activity before saving. Check the name and activity type, then save it.",
     },
   ],
-  note: "Strava may not pick up the name, type or description from the file, so check them on the upload page before saving.",
+  note: "Some platforms don't read the name or activity type from the file, so check them on the upload page before saving.",
 };

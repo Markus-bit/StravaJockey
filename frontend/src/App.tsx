@@ -1,6 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
+import { Info, Route as RouteIcon, Upload } from "lucide-react";
+import RunDetails from "./RunDetails";
+import HelpDialog, { type HelpTopic } from "./HelpDialogs";
+import Toasts, { type Toast } from "./Toasts";
+import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
+import {
+  type ActivitySettings, type Sport,
+  initialSettings, startTimeISO,
+} from "./activity";
+
+// Punktavstand i genererte spor (meter). Samme verdi for forhåndsvisning og GPX
+// slik at høydemeter i statistikken stemmer med fila.
+const SPACING_M = 25;
+const routingProfile = (sport: Sport) => (sport === "bike" ? "cycling" : "walking");
 
 // --- ENV ---
 // Vite proxy forwards '/api' -> http://localhost:4000 in dev, so we call relative paths.
@@ -9,29 +23,21 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN as string;
 // --- Hjelpetyper ---
 type LngLat = { lng: number; lat: number };
 
-// --- Sikkerhet: sjekk token tydelig ---
-function assertToken() {
+// --- Check the public Mapbox token before creating the map ---
+function hasValidToken() {
   const t = mapboxgl.accessToken;
-  if (!t || typeof t !== "string" || t.length < 30 || !t.startsWith("pk.")) {
-    const msg =
-      "Mapbox-token mangler eller er ugyldig. Sett VITE_MAPBOX_TOKEN i frontend/.env og restart dev-serveren.";
-    console.error(msg, { tokenPreview: t ? t.slice(0, 6) + "..." : "(none)" });
-    alert(msg);
-    throw new Error(msg);
+  const ok = !!t && typeof t === "string" && t.length >= 30 && t.startsWith("pk.");
+  if (!ok) {
+    console.error("VITE_MAPBOX_TOKEN is missing or invalid. Set it in frontend/.env and rebuild/restart.", {
+      tokenPreview: t ? t.slice(0, 6) + "..." : "(none)",
+    });
   }
+  return ok;
 }
 
-// Local "yyyy-MM-ddTHH:mm" for <input type="datetime-local"> (toISOString would give UTC)
-function toLocalInputValue(d: Date) {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function formatPace(value: number) {
-  const minutes = Math.floor(value);
-  const seconds = Math.round((value - minutes) * 60);
-  const padded = seconds.toString().padStart(2, "0");
-  return `${minutes}:${padded} min/km`;
+function gpxFileName(name: string) {
+  const base = name.replace(/[\\/:*?"<>|]/g, "").trim();
+  return `${base || "route"}.gpx`;
 }
 
 export default function App() {
@@ -42,27 +48,50 @@ export default function App() {
   // Waypoints behind the currently shown snapped route (waypoints are cleared after snapping)
   const [routePoints, setRoutePoints] = useState<LngLat[]>([]);
   const [snappedCoords, setSnappedCoords] = useState<[number, number][]>([]);
-  const [profile, setProfile] = useState<"walking" | "cycling" | "driving">("walking");
-  const [paceMinPerKm, setPaceMinPerKm] = useState<number>(5.0);
-  const [spacingM, setSpacingM] = useState<number>(75);
-  const [startISO, setStartISO] = useState<string>(() => toLocalInputValue(new Date()));
+  const [settings, setSettings] = useState<ActivitySettings>(initialSettings);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastId = useRef(0);
+
+  // Show an error message for a few seconds (replaces alert())
+  function notify(message: string) {
+    const id = ++toastId.current;
+    setToasts((prev) => [...prev.filter((t) => t.message !== message), { id, message }].slice(-3));
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 7000);
+  }
+  const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
   const [locating, setLocating] = useState(false);
-  const [totalDistanceKm, setTotalDistanceKm] = useState<number | null>(null);
+  const [distanceM, setDistanceM] = useState<number | null>(null);
+  const [elevationGainM, setElevationGainM] = useState<number | null>(null);
+  const [elevationLoading, setElevationLoading] = useState(false);
+  const [elevationError, setElevationError] = useState<string | null>(null);
+  // Øker for hver ny rute, så et sent høydesvar for en gammel rute ignoreres
+  const routeRequestId = useRef(0);
+  // Seed for the random pace/heart rate variation: the charts and the GPX use the same one,
+  // so the downloaded file looks exactly like the preview. New route -> new seed.
+  const [seed, setSeed] = useState(randomSeed);
+  const [elevationProfile, setElevationProfile] = useState<ElevationProfile | null>(null);
+  const [preview, setPreview] = useState<ActivityPreview | null>(null);
+  const [hoverDistM, setHoverDistM] = useState<number | null>(null);
   const hasSnapCandidate = waypoints.length >= 2;
 
   // --- Init kart ---
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
-    assertToken();
+    if (!hasValidToken()) {
+      setMapError("The map can't be loaded right now. Please try again later.");
+      return;
+    }
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/streets-v12", // <- Viktig
       center: [10.75, 59.91] as LngLatLike, // Oslo
       zoom: 12,
-      attributionControl: false,
     });
 
     // nyttig for feilsøking
@@ -103,6 +132,21 @@ export default function App() {
           "line-width": 2,
           "line-color": "#9ca3af",
           "line-dasharray": [2, 2],
+        },
+      });
+      map.addSource("hover-point", {
+        type: "geojson",
+        data: emptyFeatureCollection(),
+      });
+      map.addLayer({
+        id: "hover-point",
+        type: "circle",
+        source: "hover-point",
+        paint: {
+          "circle-radius": 6,
+          "circle-color": brandColor(),
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#fff",
         },
       });
       map.addLayer({
@@ -171,6 +215,53 @@ export default function App() {
     });
   }, [snappedCoords]);
 
+  // Pace / heart rate preview for the charts (cheap: no map or elevation lookups).
+  // Debounced so dragging a slider doesn't send a request per pixel.
+  const { paceSecPerKm, paceVariabilityPct, hrEnabled, hrAvgBpm, hrVariabilityPct } = settings;
+  useEffect(() => {
+    if (distanceM === null || distanceM <= 0) {
+      setPreview(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/activity-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            distanceM,
+            paceSecPerKm,
+            paceVariability: paceVariabilityPct / 100,
+            heartRate: hrEnabled ? { avgBpm: hrAvgBpm, variability: hrVariabilityPct / 100 } : undefined,
+            seed,
+          }),
+        });
+        if (res.ok) setPreview(await res.json());
+      } catch {
+        /* aborted or backend unreachable: keep the previous preview */
+      }
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [distanceM, paceSecPerKm, paceVariabilityPct, hrEnabled, hrAvgBpm, hrVariabilityPct, seed]);
+
+  // Cumulative distance along the snapped route, to place the chart hover on the map
+  const routeDists = useMemo(() => cumulativeDistances(snappedCoords), [snappedCoords]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const src = map.getSource("hover-point") as mapboxgl.GeoJSONSource | undefined;
+    const pos = hoverDistM === null ? null : pointAtDistance(snappedCoords, routeDists, hoverDistM);
+    src?.setData({
+      type: "FeatureCollection",
+      features: pos ? [{ type: "Feature", geometry: { type: "Point", coordinates: pos }, properties: {} }] : [],
+    });
+  }, [hoverDistM, snappedCoords, routeDists]);
+
   // Helpers
   function emptyFeatureCollection(): GeoJSON.FeatureCollection {
     return { type: "FeatureCollection", features: [] };
@@ -183,41 +274,79 @@ export default function App() {
     };
   }
 
-async function snapToRoad() {
-  if (waypoints.length < 2) return alert("Trenger minst to punkter");
-  setBusy(true);
+async function postJson(url: string, body: unknown) {
+  let res: Response;
   try {
-    // Ta vare på punktene som skal sendes
-    const pts = [...waypoints];
-
-    // Skjul gamle punkter og stiplet linje umiddelbart i UI
-    clearTempOverlays();
-    setWaypoints([]); // trigger også useEffect som holder kildene i sync
-
-    const res = await fetch(`/api/route`, {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        profile,
-        spacingM,
-        points: pts,
-      }),
+      body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error || "Route failed");
+  } catch {
+    throw new Error("Can't reach the server. Check your connection and try again.");
+  }
+  if (!res.ok) {
+    // The server always answers errors with { error: "<message for the user>" }
+    let msg = "";
+    try { msg = (await res.json())?.error ?? ""; } catch { /* not JSON, e.g. a proxy error page */ }
+    throw new Error(msg || `Something went wrong (error ${res.status}). Please try again.`);
+  }
+  return res;
+}
 
+function snapToRoad() {
+  if (waypoints.length < 2) return notify("Place at least two points on the map.");
+  const pts = [...waypoints];
+  // Skjul gamle punkter og stiplet linje umiddelbart i UI
+  clearTempOverlays();
+  setWaypoints([]); // trigger også useEffect som holder kildene i sync
+  return snapPoints(pts, settings.sport);
+}
+
+// Hent snappet rute (rask), og deretter høydemeter i bakgrunnen (tregt: ~1 s per 100 punkter)
+async function snapPoints(pts: LngLat[], sport: Sport) {
+  const id = ++routeRequestId.current;
+  const body = { profile: routingProfile(sport), spacingM: SPACING_M, points: pts };
+  setBusy(true);
+  try {
+    const data = await (await postJson(`/api/route`, body)).json();
+    if (id !== routeRequestId.current) return;
     setSnappedCoords(data.geometry.coordinates);
     setRoutePoints(pts);
-    if (typeof data.distanceM === "number") {
-      setTotalDistanceKm(Number((data.distanceM / 1000).toFixed(2)));
-    } else {
-      setTotalDistanceKm(null);
-    }
+    setDistanceM(typeof data.distanceM === "number" ? data.distanceM : null);
+    setElevationGainM(null);
+    setElevationError(null);
+    setElevationProfile(null);
+    setSeed(randomSeed());
     fitToLine(data.geometry.coordinates as [number, number][]);
-  } catch (e: any) {
-    alert(e?.message || String(e));
+  } catch (e) {
+    notify(errorText(e));
+    return;
   } finally {
     setBusy(false);
+  }
+
+  setElevationLoading(true);
+  try {
+    const data = await (await postJson(`/api/route`, { ...body, includeElevation: true })).json();
+    if (id === routeRequestId.current) {
+      setElevationGainM(data.elevationGainM ?? null);
+      setElevationError(data.elevationError ?? null);
+      setElevationProfile(data.elevationProfile ?? null);
+    }
+  } catch (e) {
+    // høydemeter er valgfritt; vis "–" og årsaken
+    if (id === routeRequestId.current) setElevationError(e instanceof Error ? e.message : String(e));
+  } finally {
+    if (id === routeRequestId.current) setElevationLoading(false);
+  }
+}
+
+function updateSettings(patch: Partial<ActivitySettings>) {
+  setSettings((prev) => ({ ...prev, ...patch }));
+  // Run og Bike bruker ulike veinett (gangstier vs sykkelveier): snapp ruten på nytt
+  if (patch.sport && patch.sport !== settings.sport && routePoints.length >= 2 && waypoints.length < 2) {
+    snapPoints(routePoints, patch.sport);
   }
 }
 
@@ -264,7 +393,15 @@ async function snapToRoad() {
     setWaypoints([]);
     setRoutePoints([]);
     setSnappedCoords([]);
-    setTotalDistanceKm(null);
+    setDistanceM(null);
+    setElevationGainM(null);
+    setElevationError(null);
+    setElevationLoading(false);
+    setElevationProfile(null);
+    setPreview(null);
+    setHoverDistM(null);
+    setSeed(randomSeed());
+    routeRequestId.current++;
     clearSourcesOnMap();
   }
 
@@ -272,7 +409,7 @@ async function snapToRoad() {
     const map = mapRef.current;
     if (!map) return;
     if (!navigator.geolocation) {
-      alert("Geolocation ikke støttet i denne nettleseren");
+      notify("Your browser doesn't support finding your location.");
       return;
     }
     setLocating(true);
@@ -283,8 +420,13 @@ async function snapToRoad() {
         setLocating(false);
       },
       (err) => {
-        const msg = err.message || "Kunne ikke hente posisjon";
-        alert(msg);
+        notify(
+          err.code === err.PERMISSION_DENIED
+            ? "Location access is blocked. Allow it in your browser settings to use this button."
+            : err.code === err.TIMEOUT
+              ? "Finding your location took too long. Please try again."
+              : "Your location isn't available right now."
+        );
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 15000 }
@@ -292,58 +434,66 @@ async function snapToRoad() {
   }
 
   async function downloadGpx() {
-    // Prefer newly clicked points; otherwise use the points behind the snapped route
-    const pts = waypoints.length >= 2 ? waypoints : routePoints;
-    if (pts.length < 2) return alert("Trenger minst to punkter");
+    // Always the snapped route shown on the map (and in the charts)
+    const pts = routePoints;
+    const s = settings;
+    const name = s.name.trim();
+    if (pts.length < 2 || snappedCoords.length === 0 || !name) return; // button is disabled then
     setBusy(true);
+    setDownloading(true);
     try {
-      const iso =
-        startISO.length === 16
-          ? new Date(startISO).toISOString()
-          : new Date().toISOString();
-
-      const res = await fetch(`/api/generate-gpx`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile,
-          spacingM,
-          paceSecPerKm: Math.round(paceMinPerKm * 60),
-          points: pts,
-          startTimeISO: iso,
-          // elevation er av som default i backend
-        }),
+      const res = await postJson(`/api/generate-gpx`, {
+        profile: routingProfile(s.sport),
+        activityType: s.sport === "bike" ? "cycling" : "running",
+        spacingM: SPACING_M,
+        points: pts,
+        paceSecPerKm: s.paceSecPerKm,
+        paceVariability: s.paceVariabilityPct / 100,
+        seed,
+        heartRate: s.hrEnabled
+          ? { avgBpm: s.hrAvgBpm, variability: s.hrVariabilityPct / 100 }
+          : undefined,
+        name,
+        startTimeISO: startTimeISO(s),
+        includeElevation: true,
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        let msg = errText;
-        try { msg = JSON.parse(errText)?.error || errText; } catch { /* not JSON */ }
-        throw new Error(msg);
-      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "route.gpx";
+      a.download = gpxFileName(name);
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert(e?.message || String(e));
+    } catch (e) {
+      notify(errorText(e));
     } finally {
       setBusy(false);
+      setDownloading(false);
     }
   }
 
   return (
     <div className="app">
       <header className="app-header">
-        <strong className="app-logo">StravaJockey</strong>
-        <div className="header-actions">
-          <button type="button">Dashboard</button>
-          <button type="button">Activities</button>
-          <button type="button">Settings</button>
-        </div>
+        <a className="brand" href="/" aria-label="StravaJockey home">
+          <span className="brand-mark" aria-hidden="true">
+            <RouteIcon size={18} strokeWidth={2.5} />
+          </span>
+          <span className="brand-name">StravaJockey</span>
+        </a>
+        <span className="brand-tagline">GPX route generator</span>
+        <nav className="header-nav" aria-label="Help">
+          <button type="button" className="nav-link" onClick={() => setHelpTopic("how-it-works")}>
+            <Info size={16} aria-hidden="true" />
+            How it works
+          </button>
+          <button type="button" className="nav-link" onClick={() => setHelpTopic("how-to-upload")}>
+            <Upload size={16} aria-hidden="true" />
+            How to upload
+          </button>
+        </nav>
       </header>
+      <HelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
       <div className="content">
         <div className="left-column">
           <section className="map-panel">
@@ -353,6 +503,7 @@ async function snapToRoad() {
             </div>
             <div className="map-container">
               <div id="map" ref={containerRef} />
+              {mapError && <div className="map-error" role="alert">{mapError}</div>}
               <button
                 className={`locate-button${locating ? " locating" : ""}`}
                 onClick={centerOnUser}
@@ -361,78 +512,89 @@ async function snapToRoad() {
               >
                 <img src={locateIcon} alt="Locate" />
               </button>
-              {hasSnapCandidate && (
-                <button
-                  className="map-action map-action--snap"
-                  onClick={snapToRoad}
-                  disabled={busy}
-                >
-                  Snap to road
-                </button>
-              )}
+              <div className="map-actions">
+                {hasSnapCandidate && (
+                  <button className="map-action" onClick={snapToRoad} disabled={busy}>
+                    Snap to road
+                  </button>
+                )}
+                {(waypoints.length > 0 || snappedCoords.length > 0) && (
+                  <button className="map-action map-action--secondary" onClick={clearAll} disabled={busy}>
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
           </section>
-          <section className="stats-panel">
-            <h2>Route stats</h2>
-            <div className="stats-scroll" />
-          </section>
+          <ActivityCharts
+            distanceM={distanceM}
+            elevation={elevationProfile}
+            elevationLoading={elevationLoading}
+            elevationError={elevationError}
+            preview={preview}
+            paceUnit={settings.paceUnit}
+            hrEnabled={settings.hrEnabled}
+            hoverDistM={hoverDistM}
+            onHover={setHoverDistM}
+          />
         </div>
-        <section className="controls-panel">
-          <h2>Route setup</h2>
-          <div className="form-grid">
-            <label>
-              <span>Profil</span>
-              <select value={profile} onChange={(e) => setProfile(e.target.value as any)}>
-                <option value="walking">Walking</option>
-                <option value="cycling">Cycling</option>
-                <option value="driving">Driving</option>
-              </select>
-            </label>
-            <label>
-              <span>Spacing (m)</span>
-              <input
-                type="number"
-                value={spacingM}
-                min={10}
-                max={500}
-                onChange={(e) => setSpacingM(Number(e.target.value))}
-              />
-            </label>
-            <label className="pace-control">
-              <span>Pace: {formatPace(paceMinPerKm)}</span>
-              <input
-                type="range"
-                min={1}
-                max={15}
-                step={0.1}
-                value={paceMinPerKm}
-                onChange={(e) => setPaceMinPerKm(Number(e.target.value))}
-              />
-            </label>
-            <label>
-              <span>Start</span>
-              <input
-                type="datetime-local"
-                value={startISO}
-                onChange={(e) => setStartISO(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="action-row">
-            <button onClick={downloadGpx} disabled={busy}>
-              Download GPX
-            </button>
-            <button onClick={clearAll} disabled={busy}>
-              Clear
-            </button>
-          </div>
-          {totalDistanceKm !== null && (
-            <div className="distance-card">
-              Total distance: <strong>{totalDistanceKm} km</strong>
-            </div>
-          )}
-        </section>
+        <RunDetails
+          settings={settings}
+          onChange={updateSettings}
+          distanceM={distanceM}
+          elevationGainM={elevationGainM}
+          elevationLoading={elevationLoading}
+          elevationError={elevationError}
+          busy={busy}
+          downloading={downloading}
+          onDownload={downloadGpx}
+          routeReady={snappedCoords.length > 0 && routePoints.length >= 2}
+        />
       </div>
+      <footer className="app-footer">
+        <span className="footer-copy">© {new Date().getFullYear()} StravaJockey. All rights reserved.</span>
+        <nav className="footer-links" aria-label="Footer">
+          <button type="button" onClick={() => setHelpTopic("terms")}>
+            Terms of Service
+          </button>
+        </nav>
+      </footer>
+      <Toasts toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
     </div>
   );
+}
+
+function randomSeed() {
+  return Math.floor(Math.random() * 0xffffffff);
+}
+
+// Same haversine distance as the backend, so chart distances line up with the map
+function cumulativeDistances(coords: [number, number][]): number[] {
+  const R = 6371000, rad = Math.PI / 180;
+  const out = coords.length ? [0] : [];
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1], [lng2, lat2] = coords[i];
+    const h = Math.sin(((lat2 - lat1) * rad) / 2) ** 2 +
+      Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lng2 - lng1) * rad) / 2) ** 2;
+    out.push(out[i - 1] + 2 * R * Math.asin(Math.sqrt(h)));
+  }
+  return out;
+}
+
+function pointAtDistance(coords: [number, number][], dists: number[], d: number): [number, number] | null {
+  if (coords.length < 2) return null;
+  let lo = 0, hi = dists.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (dists[mid] < d) lo = mid;
+    else hi = mid;
+  }
+  const span = dists[hi] - dists[lo];
+  const t = span > 0 ? Math.min(Math.max((d - dists[lo]) / span, 0), 1) : 0;
+  return [coords[lo][0] + (coords[hi][0] - coords[lo][0]) * t, coords[lo][1] + (coords[hi][1] - coords[lo][1]) * t];
+}
+
+// The brand color from the stylesheet (--brand in index.css), for map layers that can't use CSS
+function brandColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#fc4c02";
 }

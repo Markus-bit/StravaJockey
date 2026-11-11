@@ -10,11 +10,12 @@ export interface GenerateRouteInput {
   addPauses?: boolean;        // legg til realistiske pauser
   pauseEveryKm?: number;      // f.eks. 5 (hver 5. km)
   pauseSeconds?: number;      // f.eks. 20 sek
-  jitterSecondsPerKm?: number;// variasjon, f.eks. 5
+  paceVariability?: number;   // 0–0.5, tempo-svingning rundt snittet
 }
 
 export type MatchedPoint = LngLat & {
   distanceOnRouteM?: number; // kumulativ distanse fra start (m)
   elevationM?: number | null;
   timeISO?: string;          // ISO timestamp per punkt
+  heartRateBpm?: number;     // puls (slag per minutt)
 };

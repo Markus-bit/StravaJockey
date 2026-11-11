@@ -1,0 +1,13 @@
+{
+  "name": "StravaJockey",
+  "short_name": "StravaJockey",
+  "description": "Draw a route, set pace and heart rate, and download it as a GPX file.",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#ffffff",
+  "background_color": "#f3f4f6",
+  "display": "standalone",
+  "start_url": "/"
+}

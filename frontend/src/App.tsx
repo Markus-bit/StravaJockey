@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
+import { Info, Route as RouteIcon, Upload } from "lucide-react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
@@ -449,15 +450,23 @@ function updateSettings(patch: Partial<ActivitySettings>) {
   return (
     <div className="app">
       <header className="app-header">
-        <strong className="app-logo">StravaJockey</strong>
-        <div className="header-actions">
-          <button type="button" onClick={() => setHelpTopic("how-it-works")}>
+        <a className="brand" href="/" aria-label="StravaJockey home">
+          <span className="brand-mark" aria-hidden="true">
+            <RouteIcon size={18} strokeWidth={2.5} />
+          </span>
+          <span className="brand-name">StravaJockey</span>
+        </a>
+        <span className="brand-tagline">GPX route generator</span>
+        <nav className="header-nav" aria-label="Help">
+          <button type="button" className="nav-link" onClick={() => setHelpTopic("how-it-works")}>
+            <Info size={16} aria-hidden="true" />
             How it works
           </button>
-          <button type="button" onClick={() => setHelpTopic("how-to-upload")}>
+          <button type="button" className="nav-link" onClick={() => setHelpTopic("how-to-upload")}>
+            <Upload size={16} aria-hidden="true" />
             How to upload
           </button>
-        </div>
+        </nav>
       </header>
       <HelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
       <div className="content">

@@ -642,6 +642,42 @@ input[type="range"]:focus-visible {
   outline-offset: 2px;
 }
 
+/* Footer */
+.app-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 48px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+}
+.footer-copy {
+  color: #6b7280;
+}
+.footer-links {
+  display: flex;
+  gap: 32px;
+}
+.footer-links button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #111827;
+  font: inherit;
+  cursor: pointer;
+}
+.footer-links button:hover {
+  color: #fc4c02;
+}
+.footer-links button:focus-visible {
+  outline: 2px solid rgba(252, 76, 2, 0.5);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
 /* Phones / narrow windows: stack map above the panel */
 @media (max-width: 900px) {
   html, body, #root, .app {
@@ -670,6 +706,15 @@ input[type="range"]:focus-visible {
   }
   .left-column {
     height: 55vh;
+  }
+  .app-footer {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+  }
+  .footer-links {
+    gap: 24px;
   }
   .controls-panel {
     overflow: visible;

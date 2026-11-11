@@ -427,6 +427,17 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           onClear={clearAll}
         />
       </div>
+      <footer className="app-footer">
+        <span className="footer-copy">© {new Date().getFullYear()} StravaJockey. All rights reserved.</span>
+        <nav className="footer-links" aria-label="Footer">
+          <button type="button" onClick={() => setHelpTopic("how-it-works")}>
+            How It Works
+          </button>
+          <button type="button" onClick={() => setHelpTopic("how-to-upload")}>
+            How To Upload
+          </button>
+        </nav>
+      </footer>
     </div>
   );
 }

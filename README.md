@@ -37,6 +37,29 @@ On a hosting platform: build command `npm install && npm --prefix frontend insta
 start command `npm start`, and set `MAPBOX_TOKEN`, `VITE_MAPBOX_TOKEN` and (behind the platform's proxy)
 `TRUST_PROXY=1` as environment variables. Serve the site over HTTPS.
 
+## Deploying to Vercel
+
+`vercel.json` deploys the project as two [Vercel Services](https://vercel.com/docs/services) on one domain:
+
+| Service | Folder | Public on | What it is |
+|---|---|---|---|
+| `app` | `.` (`src/server.ts`) | `/api/*` | Express API, runs as a Vercel Function |
+| `frontend` | `frontend/` | everything else | Vite site, served from Vercel's CDN |
+
+1. Import the repository in Vercel (branch with `vercel.json`). It detects both services from `vercel.json`.
+2. Add environment variables (Production and Preview): `MAPBOX_TOKEN` (server token, no URL
+   restrictions) and `VITE_MAPBOX_TOKEN` (public website token, restricted to your domain).
+   `TRUST_PROXY` is set automatically on Vercel.
+3. Deploy, then add your domain under Project → Domains, and add that domain to the URL
+   restrictions of the website token in Mapbox.
+
+Things that work differently on Vercel than on a single always-on server:
+
+- The API runs as functions that start and stop on demand, so the in-memory rate limits and caches
+  are per running instance. For hard limits, add a rate-limit rule in Vercel Firewall.
+- Security headers for the site come from `vercel.json` (the API still sets its own).
+- The Hobby plan is for personal, non-commercial use.
+
 ## Limits and protection
 
 All configurable via environment variables, see `.env.example`:

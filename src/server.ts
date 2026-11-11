@@ -13,7 +13,8 @@ const app = express();
 // Behind a reverse proxy / hosting platform (Render, Fly, Nginx, ...) the visitor's real IP
 // is in X-Forwarded-For. Set TRUST_PROXY to the number of proxies in front of the app
 // (usually 1) so rate limits are per visitor and not per proxy.
-const trustProxy = process.env.TRUST_PROXY;
+// On Vercel there is always exactly one proxy (Vercel's edge) in front of the app.
+const trustProxy = process.env.TRUST_PROXY ?? (process.env.VERCEL ? "1" : undefined);
 if (trustProxy) app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true");
 
 // ---- Security headers (CSP allows exactly what Mapbox GL needs)

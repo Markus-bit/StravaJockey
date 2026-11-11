@@ -177,7 +177,12 @@ router.post("/generate-gpx", async (req, res) => {
       "Content-Disposition",
       `attachment; filename="${fileName.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
     );
-    res.send(gpx);
+    // Streamed in chunks: Vercel limits normal (non-streamed) responses to 4.5 MB
+    // (split the bytes, not the string, so multi-byte characters like emoji stay intact)
+    const bytes = Buffer.from(gpx, "utf8");
+    const CHUNK = 256 * 1024;
+    for (let i = 0; i < bytes.length; i += CHUNK) res.write(bytes.subarray(i, i + CHUNK));
+    res.end();
   } catch (e) {
     sendError(res, e, "generate-gpx");
   }

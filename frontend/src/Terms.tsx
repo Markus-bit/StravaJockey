@@ -76,7 +76,7 @@ export default function TermsContent() {
           memory for a short time to avoid repeated lookups, and are lost when the server restarts.
         </li>
         <li>
-          Your name, description, pace and heart rate settings are only used to build the file and are
+          Your activity name, pace and heart rate settings are only used to build the file and are
           not stored.
         </li>
         <li>

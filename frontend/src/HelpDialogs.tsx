@@ -78,14 +78,14 @@ const HOW_IT_WORKS: Content = {
     },
     {
       title: "Set the details",
-      text: "Pick your average pace and how much it should vary, add heart rate data if you want it, and set the name, date, start time and description.",
+      text: "Pick your average pace and how much it should vary, add heart rate data if you want it, and set the name, date and start time.",
     },
     {
       title: "Download the GPX",
       text: "Press “Download GPX”. The file contains GPS points with timestamps, elevation and heart rate, built from your settings. Long routes can take up to ~30 seconds while elevation is looked up.",
     },
   ],
-  note: "Press “Clear” to start over. Switching between Run and Bike re-snaps the route automatically.",
+  note: "Press “Clear” on the map to start over. Switching between Run and Bike re-snaps the route automatically.",
 };
 
 const HOW_TO_UPLOAD: Content = {

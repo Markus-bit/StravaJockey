@@ -186,10 +186,14 @@ html, body, #root {
 .locate-button.locating img {
   opacity: 0.6;
 }
-.map-action {
+.map-actions {
   position: absolute;
   left: 16px;
   bottom: 50px;
+  display: flex;
+  gap: 8px;
+}
+.map-action {
   padding: 10px 16px;
   border: none;
   border-radius: 10px;
@@ -198,6 +202,11 @@ html, body, #root {
   font-size: 13px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(252, 76, 2, 0.35);
+}
+.map-action--secondary {
+  background: #fff;
+  color: #fc4c02;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
 }
 .map-action:disabled {
   opacity: 0.6;
@@ -971,4 +980,36 @@ input[type="range"]:focus-visible {
 }
 .terms li {
   margin-bottom: 6px;
+}
+
+/* Full-width download button at the bottom of Run Details */
+.download-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  flex-shrink: 0;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 12px;
+  background: #fc4c02;
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(252, 76, 2, 0.3);
+  transition: background 0.2s ease;
+}
+.download-button:not(:disabled):hover {
+  background: #ff6d2c;
+}
+.download-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.download-button:focus-visible {
+  outline: 3px solid rgba(252, 76, 2, 0.4);
+  outline-offset: 3px;
 }

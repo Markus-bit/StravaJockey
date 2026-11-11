@@ -428,7 +428,6 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           ? { avgBpm: s.hrAvgBpm, variability: s.hrVariabilityPct / 100 }
           : undefined,
         name,
-        description: s.description.trim() || undefined,
         startTimeISO: startTimeISO(s),
         includeElevation: true,
       });
@@ -478,15 +477,18 @@ function updateSettings(patch: Partial<ActivitySettings>) {
               >
                 <img src={locateIcon} alt="Locate" />
               </button>
-              {hasSnapCandidate && (
-                <button
-                  className="map-action map-action--snap"
-                  onClick={snapToRoad}
-                  disabled={busy}
-                >
-                  Snap to road
-                </button>
-              )}
+              <div className="map-actions">
+                {hasSnapCandidate && (
+                  <button className="map-action" onClick={snapToRoad} disabled={busy}>
+                    Snap to road
+                  </button>
+                )}
+                {(waypoints.length > 0 || snappedCoords.length > 0) && (
+                  <button className="map-action map-action--secondary" onClick={clearAll} disabled={busy}>
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
           </section>
           <ActivityCharts
@@ -511,7 +513,6 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           busy={busy}
           downloading={downloading}
           onDownload={downloadGpx}
-          onClear={clearAll}
         />
       </div>
       <footer className="app-footer">

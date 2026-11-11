@@ -15,7 +15,6 @@ export interface ActivitySettings {
   date: string;                // yyyy-MM-dd (local)
   hour: number;
   minute: number;
-  description: string;
 }
 
 const KM_PER_MI = 1.609344;
@@ -137,6 +136,5 @@ export function initialSettings(): ActivitySettings {
     date: localDateString(now),
     hour: now.getHours(),
     minute: now.getMinutes(),
-    description: "",
   };
 }

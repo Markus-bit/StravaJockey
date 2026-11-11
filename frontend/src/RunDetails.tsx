@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import DatePicker from "./DatePicker";
 import {
-  Activity, Bike, Clock, Footprints, Gauge, Heart, Hexagon, Ruler, Timer, TrendingUp,
+  Activity, Bike, Clock, Download, Footprints, Gauge, Heart, Hexagon, Ruler, Timer, TrendingUp,
 } from "lucide-react";
 import {
   type ActivitySettings, type PaceUnit, type Sport,
@@ -22,11 +22,10 @@ type Props = {
   busy: boolean;
   downloading: boolean;
   onDownload: () => void;
-  onClear: () => void;
 };
 
 export default function RunDetails({
-  settings: s, onChange, distanceM, elevationGainM, elevationLoading, elevationError, busy, downloading, onDownload, onClear,
+  settings: s, onChange, distanceM, elevationGainM, elevationLoading, elevationError, busy, downloading, onDownload,
 }: Props) {
   const isRun = s.sport === "run";
   const word = isRun ? "Run" : "Ride";
@@ -201,26 +200,10 @@ export default function RunDetails({
         </div>
       </div>
 
-      <label className="rd-field">
-        <span className="rd-label">Description</span>
-        <textarea
-          className="rd-input"
-          rows={3}
-          maxLength={2000}
-          placeholder={`How did the ${word.toLowerCase()} go?`}
-          value={s.description}
-          onChange={(e) => onChange({ description: e.target.value })}
-        />
-      </label>
-
-      <div className="action-row">
-        <button onClick={onDownload} disabled={busy}>
-          {downloading ? "Generating…" : "Download GPX"}
-        </button>
-        <button className="secondary" onClick={onClear} disabled={busy}>
-          Clear
-        </button>
-      </div>
+      <button className="download-button" onClick={onDownload} disabled={busy}>
+        <Download size={20} />
+        {downloading ? "Generating…" : "Download GPX"}
+      </button>
       {downloading && (
         <p className="rd-hint">Looking up elevation for the route. Long routes can take up to ~30 seconds.</p>
       )}

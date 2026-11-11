@@ -44,7 +44,8 @@ jobs:
         env:
           VITE_MAPBOX_TOKEN: pk.ci-placeholder
 
+      # All packages, including dev tools (tests, lint, build), at high severity or worse
       - name: Check dependencies for known vulnerabilities
         run: |
-          npm audit --omit=dev --audit-level=high
-          npm audit --omit=dev --audit-level=high --prefix frontend
+          npm audit --audit-level=high
+          npm audit --audit-level=high --prefix frontend

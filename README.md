@@ -24,6 +24,16 @@ npm run dev
 
 Opens the API on http://localhost:4000 and the site on http://localhost:5173 (Vite forwards `/api` to the API).
 
+## Checks
+
+```bash
+npm test          # unit and API tests (Vitest, tests/)
+npm run check     # type-check + tests + frontend lint + frontend build (same as CI)
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the same checks plus a dependency audit on every
+pull request and every push to `main`. Merge only when the check is green.
+
 ## Production
 
 ```bash

@@ -98,7 +98,7 @@ export default function App() {
 
     // nyttig for feilsøking
     map.on("error", (e) =>
-      console.error("Mapbox error:", (e as any)?.error?.message || e)
+      console.error("Mapbox error:", (e as { error?: { message?: string } })?.error?.message || e)
     );
     map.on("styledata", () => {
       // console.log("styledata");
@@ -362,7 +362,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     const map = mapRef.current!;
     if (!coords.length) return;
     const b = new mapboxgl.LngLatBounds(coords[0], coords[0]);
-    coords.forEach((c) => b.extend(c as any));
+    coords.forEach((c) => b.extend(c));
     map.fitBounds(b, { padding: 40, duration: 400 });
   }
 
@@ -376,7 +376,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       properties: {},
     };
     // Tøm stiplet “temp-line” (waypoints-kilden tømmes via setWaypoints([]))
-    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
+    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
 }
 
   function clearSourcesOnMap() {
@@ -393,9 +393,9 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       features: [],
     };
 
-    (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
-    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine as any);
-    (map.getSource("waypoints") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyFC as any);
+    (map.getSource("route") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
+    (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
+    (map.getSource("waypoints") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyFC);
 }
   function clearAll() {
     setWaypoints([]);

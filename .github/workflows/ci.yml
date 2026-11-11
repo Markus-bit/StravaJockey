@@ -1,0 +1,50 @@
+# Runs on every pull request and every push to main. Vercel deploys separately;
+# a red check here means: don't merge yet.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci
+          npm ci --prefix frontend
+
+      - name: Type-check API
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm --prefix frontend run build
+        env:
+          VITE_MAPBOX_TOKEN: pk.ci-placeholder
+
+      - name: Check dependencies for known vulnerabilities
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --omit=dev --audit-level=high --prefix frontend

@@ -69,7 +69,6 @@ export default function App() {
       style: "mapbox://styles/mapbox/streets-v12", // <- Viktig
       center: [10.75, 59.91] as LngLatLike, // Oslo
       zoom: 12,
-      attributionControl: false,
     });
 
     // nyttig for feilsøking
@@ -430,6 +429,9 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       <footer className="app-footer">
         <span className="footer-copy">© {new Date().getFullYear()} StravaJockey. All rights reserved.</span>
         <nav className="footer-links" aria-label="Footer">
+          <button type="button" onClick={() => setHelpTopic("terms")}>
+            Terms of Service
+          </button>
           <button type="button" onClick={() => setHelpTopic("how-it-works")}>
             How It Works
           </button>

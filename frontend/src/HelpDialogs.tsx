@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
+import TermsContent from "./Terms";
 
-export type HelpTopic = "how-it-works" | "how-to-upload";
+export type HelpTopic = "how-it-works" | "how-to-upload" | "terms";
 
 export default function HelpDialog({ topic, onClose }: { topic: HelpTopic | null; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -15,6 +16,7 @@ export default function HelpDialog({ topic, onClose }: { topic: HelpTopic | null
   }, [topic]);
 
   const content = topic === "how-to-upload" ? HOW_TO_UPLOAD : HOW_IT_WORKS;
+  const title = topic === "terms" ? "Terms of Service" : content.title;
 
   return (
     <dialog
@@ -26,26 +28,34 @@ export default function HelpDialog({ topic, onClose }: { topic: HelpTopic | null
       onClick={(e) => { if (e.target === ref.current) onClose(); }}
     >
       {topic && (
+        <div className="help-head">
+          <h2 id="help-title">{title}</h2>
+          <button type="button" className="help-close" aria-label="Close" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+      )}
+      {topic && (
         <div className="help-body">
-          <div className="help-head">
-            <h2 id="help-title">{content.title}</h2>
-            <button type="button" className="help-close" aria-label="Close" onClick={onClose}>
-              <X size={20} />
-            </button>
-          </div>
-          {content.intro && <p className="help-intro">{content.intro}</p>}
-          <ol className="help-steps">
-            {content.steps.map((s, i) => (
-              <li key={i}>
-                <span className="help-num">{i + 1}</span>
-                <div>
-                  <strong>{s.title}</strong>
-                  <p>{s.text}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          {content.note && <p className="help-note">{content.note}</p>}
+          {topic === "terms" ? (
+            <TermsContent />
+          ) : (
+            <>
+              {content.intro && <p className="help-intro">{content.intro}</p>}
+              <ol className="help-steps">
+                {content.steps.map((s, i) => (
+                  <li key={i}>
+                    <span className="help-num">{i + 1}</span>
+                    <div>
+                      <strong>{s.title}</strong>
+                      <p>{s.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              {content.note && <p className="help-note">{content.note}</p>}
+            </>
+          )}
         </div>
       )}
     </dialog>

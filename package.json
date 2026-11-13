@@ -1,8 +1,28 @@
 {
   "name": "stravajockey",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Draw a route on a map, set pace and heart rate, and download it as a GPX file. Express API + React/Vite frontend, deployed on Vercel.",
+  "private": true,
+  "license": "MIT",
+  "author": "Markus-bit (https://github.com/Markus-bit)",
+  "homepage": "https://www.stravajockey.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Markus-bit/StravaJockey.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Markus-bit/StravaJockey/issues"
+  },
+  "keywords": [
+    "gpx",
+    "route",
+    "mapbox",
+    "express",
+    "react",
+    "vite",
+    "typescript",
+    "vercel"
+  ],
   "scripts": {
     "dev:server": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:client": "npm --prefix frontend run dev",
@@ -14,17 +34,6 @@
     "lint": "npm --prefix frontend run lint",
     "check": "npm run typecheck && npm test && npm run lint && npm --prefix frontend run build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Markus-bit/StravaJockey.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Markus-bit/StravaJockey/issues"
-  },
-  "homepage": "https://github.com/Markus-bit/StravaJockey#readme",
   "dependencies": {
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",

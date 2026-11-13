@@ -189,42 +189,6 @@ html, body, #root {
   overflow-y: auto;
   margin-right: 0;
 }
-.action-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.action-row button {
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: none;
-  background: var(--brand);
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.action-row button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.action-row button:not(:disabled):hover {
-  background: var(--brand-hover);
-}
-.action-row button.secondary {
-  background: #fff;
-  color: var(--brand);
-  border: 1px solid var(--brand);
-}
-.action-row button.secondary:not(:disabled):hover {
-  background: var(--brand-tint);
-}
-.distance-card {
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--brand) 8%, transparent);
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--brand-ink);
-}
 .locate-button {
   position: absolute;
   right: 16px;

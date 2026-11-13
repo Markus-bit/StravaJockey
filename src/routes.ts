@@ -21,7 +21,7 @@ const PointsSchema = z
   .array(z.object({ lng: z.number().min(-180).max(180), lat: z.number().min(-90).max(90) }))
   .min(2, "Place at least two points on the map.")
   .max(config.maxWaypoints, `Too many points (max ${config.maxWaypoints}).`);
-const ProfileSchema = z.enum(["walking","cycling","driving"]);
+const ProfileSchema = z.enum(["walking","cycling"]);
 
 function toFileName(name: string): string {
   const base = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, "").trim() || "route";
@@ -38,7 +38,7 @@ function getMapboxToken(): string {
 }
 
 // Snap to roads and refuse routes longer than the configured maximum
-async function snapWithinLimits(points: LngLat[], profile: "walking" | "cycling" | "driving", preferMatch?: boolean) {
+async function snapWithinLimits(points: LngLat[], profile: "walking" | "cycling", preferMatch?: boolean) {
   // Cached: the snap preview, the elevation stats and the GPX download reuse one Mapbox call
   const token = getMapboxToken();
   const snapped = await cachedRoute(routeKey(points, profile, preferMatch), () =>
@@ -54,26 +54,26 @@ async function snapWithinLimits(points: LngLat[], profile: "walking" | "cycling"
 
 router.get("/health", (_req,res)=>res.json({ok:true}));
 
-// ---- NY: få snappet rute (geojson + distanse/duration-anslag)
+// ---- Snapped route for the map and stats (GeoJSON + distance, optional elevation)
 router.post("/route", async (req, res) => {
   try {
     const body = z.object({
       points: PointsSchema,
       profile: ProfileSchema.default("walking"),
-      preferMatch: z.boolean().optional(), // sett true hvis klient sender tett spor
+      preferMatch: z.boolean().optional(), // set true if the client sends a dense trace
       spacingM: z.number().min(10).max(500).default(25),
       includeElevation: z.boolean().default(false)
     }).parse(req.body);
 
     const snapped = await snapWithinLimits(body.points, body.profile, body.preferMatch);
 
-    // densifiser for jevn høyde/tidsprofil
+    // add points every spacingM for an even elevation/time profile
     const dense = densifyLine(snapped, body.spacingM);
 
     const dists = accumulateDistances(dense);
     const total = dists[dists.length-1];
 
-    // høydemeter er "nice to have" for statistikken: feil her skal ikke stoppe ruten
+    // elevation is "nice to have" for the stats: a failure here must not stop the route
     let elevationGainM: number | null = null;
     let elevationError: string | null = null;
     let profile: ReturnType<typeof elevationProfile> | null = null;
@@ -132,12 +132,12 @@ router.post("/generate-gpx", async (req, res) => {
 
     // 1) snap (Directions default)
     const snapped = await snapWithinLimits(parsed.points, parsed.profile, parsed.preferMatch);
-    // 2) densifiser
+    // 2) add points every spacingM
     const dense = densifyLine(snapped, parsed.spacingM);
-    // 3) distanse
+    // 3) distance along the route
     const dists = accumulateDistances(dense);
     const withDist = dense.map((p,i)=> ({ ...p, distanceOnRouteM: dists[i] }));
-    // 4) høyde (hvis oppslaget feiler lager vi fila uten høyde i stedet for å feile)
+    // 4) elevation (if the lookup fails, write the file without elevation instead of failing)
     let withEle: MatchedPoint[] = withDist;
     if (parsed.includeElevation) {
       try {
@@ -157,7 +157,7 @@ router.post("/generate-gpx", async (req, res) => {
       pauseSeconds: parsed.pauseSeconds,
       rand: paceRandom(parsed.seed)
     });
-    // 6) puls
+    // 6) heart rate
     const withHr = parsed.heartRate
       ? generateHeartRate({
           points: withTime,

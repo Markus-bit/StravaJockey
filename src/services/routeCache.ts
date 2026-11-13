@@ -13,8 +13,6 @@ const cache = new Map<string, Entry>(); // Map keeps insertion order -> oldest f
 const inflight = new Map<string, Promise<MatchedPoint[]>>();
 let totalPoints = 0;
 
-export const routeCacheStats = { hits: 0, misses: 0 };
-
 export function routeKey(points: LngLat[], profile: string, preferMatch?: boolean): string {
   const pts = points.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(";");
   return `${profile}|${preferMatch ? 1 : 0}|${pts}`;
@@ -26,7 +24,6 @@ export async function cachedRoute(key: string, fetch: () => Promise<MatchedPoint
     // move to the end (most recently used)
     cache.delete(key);
     cache.set(key, hit);
-    routeCacheStats.hits++;
     return hit.route;
   }
   if (hit) remove(key);
@@ -34,11 +31,9 @@ export async function cachedRoute(key: string, fetch: () => Promise<MatchedPoint
   // Same route requested twice at the same moment: share one Mapbox call
   const pending = inflight.get(key);
   if (pending) {
-    routeCacheStats.hits++;
     return pending;
   }
 
-  routeCacheStats.misses++;
   const p = fetch()
     .then((route) => {
       store(key, route);

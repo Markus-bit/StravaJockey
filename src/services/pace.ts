@@ -1,16 +1,16 @@
 import { MatchedPoint } from "../domain/types";
 import { smoothNoise } from "./noise";
 
-// Returnerer ny liste med timeISO på hvert punkt
+// Returns a new list with timeISO on every point
 export function generateTimestamps(opts: {
   points: MatchedPoint[];
-  paceSecPerKm: number;       // f.eks. 300 = 5:00/km (gjennomsnitt for hele turen)
-  startTimeISO: string;       // starttid
-  paceVariability?: number;   // 0–0.5: hvor mye tempoet svinger rundt snittet (0.2 = ±20 %)
+  paceSecPerKm: number;       // e.g. 300 = 5:00/km (average for the whole activity)
+  startTimeISO: string;       // start time
+  paceVariability?: number;   // 0–0.5: how much the pace varies around the average (0.2 = ±20 %)
   addPauses?: boolean;
   pauseEveryKm?: number;
   pauseSeconds?: number;
-  rand?: () => number;        // for tester
+  rand?: () => number;        // for tests / seeded output
 }): MatchedPoint[] {
   const {
     points, paceSecPerKm, startTimeISO,
@@ -23,10 +23,10 @@ export function generateTimestamps(opts: {
   if (points.length === 0) return [];
 
   const variability = Math.min(Math.max(paceVariability, 0), 0.5);
-  // Tempo-svingninger over ~0.4, 1.2 og 3 km
+  // Pace waves over ~0.4, 1.2 and 3 km
   const noise = smoothNoise([3000, 1200, 400], rand);
 
-  // 1) relativ tid per segment (faktor > 1 = tregere)
+  // 1) relative time per segment (factor > 1 = slower)
   const segFactors: number[] = [0];
   let weighted = 0;
   let totalDist = 0;
@@ -38,12 +38,12 @@ export function generateTimestamps(opts: {
     weighted += segDist * factor;
     totalDist += segDist;
   }
-  // 2) normaliser slik at snittempoet blir nøyaktig paceSecPerKm
+  // 2) normalise so the average pace is exactly paceSecPerKm
   const norm = weighted > 0 ? totalDist / weighted : 1;
 
   // exact elapsed time in ms; rounding per segment would add up to a different pace
   let lastMs = new Date(startTimeISO).getTime();
-  let lastKmMarker = 0; // for pauser hver X km
+  let lastKmMarker = 0; // for pauses every X km
 
   return points.map((p, i) => {
     if (i === 0) return { ...p, timeISO: new Date(lastMs).toISOString() };

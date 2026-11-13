@@ -13,8 +13,8 @@ import {
   initialSettings, localDateString, startTimeISO,
 } from "./activity";
 
-// Punktavstand i genererte spor (meter). Samme verdi for forhåndsvisning og GPX
-// slik at høydemeter i statistikken stemmer med fila.
+// Point spacing in generated tracks (metres). Same value for the preview and the GPX,
+// so the elevation gain in the stats matches the file.
 const SPACING_M = 25;
 const routingProfile = (sport: Sport) => (sport === "bike" ? "cycling" : "walking");
 
@@ -70,7 +70,7 @@ export default function App() {
   const [elevationGainM, setElevationGainM] = useState<number | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
   const [elevationError, setElevationError] = useState<string | null>(null);
-  // Øker for hver ny rute, så et sent høydesvar for en gammel rute ignoreres
+  // Increases with every new route, so a late elevation answer for an old route is ignored
   const routeRequestId = useRef(0);
   // Seed for the random pace/heart rate variation: the charts and the GPX use the same one,
   // so the downloaded file looks exactly like the preview. New route -> new seed.
@@ -80,7 +80,7 @@ export default function App() {
   const [hoverDistM, setHoverDistM] = useState<number | null>(null);
   const hasSnapCandidate = waypoints.length >= 2;
 
-  // --- Init kart ---
+  // --- Create the map ---
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
@@ -97,7 +97,7 @@ export default function App() {
       zoom: startView.zoom,
     });
 
-    // nyttig for feilsøking
+    // useful for debugging
     map.on("error", (e) =>
       console.error("Mapbox error:", (e as { error?: { message?: string } })?.error?.message || e)
     );
@@ -106,7 +106,7 @@ export default function App() {
     });
 
     map.on("load", () => {
-      // Kilder
+      // Sources
       map.addSource("waypoints", {
         type: "geojson",
         data: emptyFeatureCollection(),
@@ -120,7 +120,7 @@ export default function App() {
         data: emptyLineString(),
       });
 
-      // Lag
+      // Layers
       map.addLayer({
         id: "route-line",
         type: "line",
@@ -171,7 +171,7 @@ export default function App() {
       saveMapView({ center: [c.lng, c.lat], zoom: map.getZoom() });
     });
 
-    // Klikk for å legge til waypoint
+    // Click to add a waypoint
     map.on("click", (e) => {
       const p = { lng: e.lngLat.lng, lat: e.lngLat.lat };
       setWaypoints((prev) => [...prev, p]);
@@ -179,14 +179,14 @@ export default function App() {
 
     mapRef.current = map;
 
-    // Viktig i React StrictMode: nullstill ref ved unmount
+    // Important in React StrictMode: reset the ref on unmount
     return () => {
       map.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // Oppdater waypoints i kartet
+  // Keep the waypoint layers in sync
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -212,7 +212,7 @@ export default function App() {
     });
   }, [waypoints]);
 
-  // Oppdater snappet rute i kartet
+  // Keep the snapped route layer in sync
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -306,13 +306,13 @@ async function postJson(url: string, body: unknown) {
 function snapToRoad() {
   if (waypoints.length < 2) return notify("Place at least two points on the map.");
   const pts = [...waypoints];
-  // Skjul gamle punkter og stiplet linje umiddelbart i UI
+  // Hide the old points and the dashed line right away
   clearTempOverlays();
-  setWaypoints([]); // trigger også useEffect som holder kildene i sync
+  setWaypoints([]); // also triggers the effect that keeps the map sources in sync
   return snapPoints(pts, settings.sport);
 }
 
-// Hent snappet rute (rask), og deretter høydemeter i bakgrunnen (tregt: ~1 s per 100 punkter)
+// Fetch the snapped route (fast), then the elevation in the background
 async function snapPoints(pts: LngLat[], sport: Sport) {
   const id = ++routeRequestId.current;
   const body = { profile: routingProfile(sport), spacingM: SPACING_M, points: pts };
@@ -344,7 +344,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
       setElevationProfile(data.elevationProfile ?? null);
     }
   } catch (e) {
-    // høydemeter er valgfritt; vis "–" og årsaken
+    // elevation is optional; show "–" and the reason
     if (id === routeRequestId.current) setElevationError(e instanceof Error ? e.message : String(e));
   } finally {
     if (id === routeRequestId.current) setElevationLoading(false);
@@ -353,7 +353,7 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
 
 function updateSettings(patch: Partial<ActivitySettings>) {
   setSettings((prev) => notInFuture({ ...prev, ...patch }));
-  // Run og Bike bruker ulike veinett (gangstier vs sykkelveier): snapp ruten på nytt
+  // Run and Bike use different networks (footpaths vs cycle routes): snap the route again
   if (patch.sport && patch.sport !== settings.sport && routePoints.length >= 2 && waypoints.length < 2) {
     snapPoints(routePoints, patch.sport);
   }
@@ -376,7 +376,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       geometry: { type: "LineString", coordinates: [] },
       properties: {},
     };
-    // Tøm stiplet “temp-line” (waypoints-kilden tømmes via setWaypoints([]))
+    // Clear the dashed "temp-line" (the waypoints source is cleared via setWaypoints([]))
     (map.getSource("temp-line") as mapboxgl.GeoJSONSource | undefined)?.setData(emptyLine);
 }
 

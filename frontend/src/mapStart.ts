@@ -3,7 +3,7 @@
 //   2. a big city in the visitor's time zone (no location permission needed), else
 //   3. Oslo.
 
-export type MapView = { center: [number, number]; zoom: number };
+type MapView = { center: [number, number]; zoom: number };
 
 const STORAGE_KEY = "stravajockey:mapView";
 const FALLBACK: MapView = { center: [10.75, 59.91], zoom: 12 }; // Oslo

@@ -22,7 +22,6 @@ const CACHE_TTL_MS = 60 * 60_000;
 type CachedTile = { png: Buffer | null; expires: number }; // null = no data (404)
 const tileCache = new Map<string, CachedTile>();
 let cacheBytes = 0;
-export const terrainStats = { tilesFetched: 0, tilesFromCache: 0 };
 
 type Location = { lat: number; lng: number };
 type Decoded = { data: Buffer; width: number; height: number } | null;
@@ -96,7 +95,6 @@ async function getTile(key: string, token: string): Promise<Buffer | null> {
   if (hit && hit.expires > Date.now()) {
     tileCache.delete(key); // move to the end (most recently used)
     tileCache.set(key, hit);
-    terrainStats.tilesFromCache++;
     return hit.png;
   }
   if (hit) evict(key);
@@ -114,7 +112,6 @@ async function getTile(key: string, token: string): Promise<Buffer | null> {
     if (axios.isAxiosError(e) && e.response?.status === 404) png = null;
     else throw e;
   }
-  terrainStats.tilesFetched++;
   store(key, png);
   return png;
 }

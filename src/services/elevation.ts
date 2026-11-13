@@ -5,7 +5,7 @@ import { accumulateDistances } from "../domain/geo";
 import { HttpError } from "../errors";
 import { lookupMapboxTerrain } from "./mapboxTerrain";
 
-export type ElevationSource = "mapbox" | "opentopodata";
+type ElevationSource = "mapbox" | "opentopodata";
 
 // Which source to use. Mapbox terrain tiles by default (fast, worldwide, uses the server's
 // MAPBOX_TOKEN); OpenTopoData is the automatic fallback if Mapbox fails.
@@ -80,8 +80,8 @@ async function lookupWithFallback(samples: { lat: number; lng: number }[], sourc
 // climbing. Points without data (e.g. over water) are skipped.
 // Tuned so a real route came out ~6-7 % below the old method, in line with the one
 // comparison with Strava's number we had. Strava's own method isn't public.
-export const GAIN_SMOOTHING_M = 100;
-export const GAIN_THRESHOLD_M = 1;
+const GAIN_SMOOTHING_M = 100;
+const GAIN_THRESHOLD_M = 1;
 
 export function elevationGain(
   points: MatchedPoint[],

@@ -1,6 +1,6 @@
-const R = 6371000; // jordradius i meter
+const R = 6371000; // Earth radius in metres
 
-export function toRad(d: number) { return d * Math.PI / 180; }
+function toRad(d: number) { return d * Math.PI / 180; }
 
 export function haversine(a: {lat:number;lng:number}, b:{lat:number;lng:number}): number {
   const dLat = toRad(b.lat - a.lat);

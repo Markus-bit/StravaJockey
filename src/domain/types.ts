@@ -1,21 +1,11 @@
 export type LngLat = { lng: number; lat: number };
 
-export type MatchProfile = "walking" | "cycling" | "driving";
-
-export interface GenerateRouteInput {
-  points: LngLat[];           // brukerens rå punkter
-  profile: MatchProfile;      // map matching profil
-  paceSecPerKm: number;       // 300 = 5:00/km
-  startTimeISO?: string;      // default = now
-  addPauses?: boolean;        // legg til realistiske pauser
-  pauseEveryKm?: number;      // f.eks. 5 (hver 5. km)
-  pauseSeconds?: number;      // f.eks. 20 sek
-  paceVariability?: number;   // 0–0.5, tempo-svingning rundt snittet
-}
+// Routing profile: Run uses walking routes, Bike uses cycling routes
+export type MatchProfile = "walking" | "cycling";
 
 export type MatchedPoint = LngLat & {
-  distanceOnRouteM?: number; // kumulativ distanse fra start (m)
+  distanceOnRouteM?: number; // cumulative distance from the start (m)
   elevationM?: number | null;
-  timeISO?: string;          // ISO timestamp per punkt
-  heartRateBpm?: number;     // puls (slag per minutt)
+  timeISO?: string;          // ISO timestamp of the point
+  heartRateBpm?: number;     // heart rate (beats per minute)
 };

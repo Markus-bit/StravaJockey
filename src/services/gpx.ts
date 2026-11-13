@@ -29,7 +29,7 @@ export function buildGpx(
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<gpx version="1.1" creator="${esc(GPX_CREATOR)}" xmlns="http://www.topografix.com/GPX/1/1" ` +
       `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ` +
-      // Garmin TrackPointExtension: standard måte å legge puls i GPX (leses av Strava m.fl.)
+      // Garmin TrackPointExtension: the standard way to put heart rate in GPX (read by most platforms)
       `xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" ` +
       `xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd ` +
       `http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd">`,
@@ -39,7 +39,7 @@ export function buildGpx(
   if (desc) out.push(`    <desc>${desc}</desc>`);
   if (points[0]?.timeISO) out.push(`    <time>${esc(points[0].timeISO)}</time>`);
   out.push(`  </metadata>`, `  <trk>`, `    <name>${name}</name>`);
-  // GPX 1.1 krever rekkefølgen name, desc, ..., type, trkseg
+  // GPX 1.1 requires the order name, desc, ..., type, trkseg
   if (desc) out.push(`    <desc>${desc}</desc>`);
   if (opts.type) out.push(`    <type>${opts.type}</type>`);
   out.push(`    <trkseg>`);

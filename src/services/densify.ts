@@ -1,7 +1,7 @@
 import { haversine } from "../domain/geo";
 import type { LngLat } from "../domain/types";
 
-// lineær interpolasjon i WGS84 (nok for korte segmenter)
+// Linear interpolation in WGS84 (accurate enough for short segments)
 function lerp(a:number,b:number,t:number){ return a + (b-a)*t; }
 
 export function densifyLine(points: LngLat[], spacingM = 25): LngLat[] {

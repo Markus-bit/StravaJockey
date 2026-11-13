@@ -2,8 +2,31 @@
 
 Draw a route on a map, choose pace and heart rate settings, and download it as a GPX file.
 
-- `src/` – Express + TypeScript API (routing and elevation via Mapbox, OpenTopoData as elevation fallback, GPX generation)
-- `frontend/` – React + Vite app (Mapbox GL map, settings panel, charts)
+Live at **https://www.stravajockey.com** (hosted on Vercel; `stravajockey.com` redirects to `www`).
+
+## What it does
+
+- Click points on the map and **snap** them to roads and paths (Mapbox Directions; Run uses
+  walking routes, Bike uses cycling routes).
+- **Stats and charts**: distance, duration, elevation gain, and elevation / pace / heart rate along
+  the route, with a shared hover marker on the map. Units: min/km, min/mi, km/h or mph
+  (elevation in feet with miles).
+- **Settings**: average pace, pace inconsistency, heart rate (average and variability), name,
+  date and start time (no future times).
+- **Download GPX**: track points every 25 m with timestamps, elevation and heart rate
+  (Garmin TrackPointExtension). The charts and the file use the same random seed, so the file
+  matches the preview.
+
+## Project structure
+
+| Path | What |
+|---|---|
+| `src/` | Express + TypeScript API: routing (Mapbox), elevation (Mapbox terrain tiles, OpenTopoData fallback), pace/heart rate generation, GPX writer |
+| `frontend/` | React + Vite app: map, Run Details panel, charts, help and terms dialogs |
+| `tests/` | Vitest unit and API tests |
+| `scripts/og-image.html` | Template for the link preview image |
+| `vercel.json` | Vercel deployment (two services, security headers) |
+| `.github/workflows/ci.yml` | CI: type-check, tests, lint, build, dependency audit |
 
 ## Setup
 
@@ -23,6 +46,14 @@ npm run dev
 ```
 
 Opens the API on http://localhost:4000 and the site on http://localhost:5173 (Vite forwards `/api` to the API).
+
+**After every `git pull`**, run both installs again; new packages otherwise cause
+"Cannot find module" / "Failed to resolve import" errors:
+
+```bash
+npm install
+npm --prefix frontend install
+```
 
 ## Checks
 
@@ -66,9 +97,23 @@ start command `npm start`, and set `MAPBOX_TOKEN`, `VITE_MAPBOX_TOKEN` and (behi
 Things that work differently on Vercel than on a single always-on server:
 
 - The API runs as functions that start and stop on demand, so the in-memory rate limits and caches
-  are per running instance. For hard limits, add a rate-limit rule in Vercel Firewall.
+  are per running instance. A Vercel Firewall rule is the hard backstop (see below).
 - Security headers for the site come from `vercel.json` (the API still sets its own).
 - The Hobby plan is for personal, non-commercial use.
+
+### Current production setup
+
+- **Domain** `stravajockey.com`, DNS at the domain provider (not Vercel DNS):
+  `A @ → 216.198.79.1` and `CNAME www → <value shown in Vercel → Domains>`. The apex redirects (308) to `www`.
+- **Mapbox**: the website token is URL-restricted to `https://www.stravajockey.com`,
+  `https://stravajockey.com`, the `*.vercel.app` address and `localhost:5173`; the server token
+  has no URL restrictions. Usage notifications are set for map loads, routing and raster tiles.
+- **Vercel Firewall**: rate-limit rule "API rate limit": request path matches
+  `^/api/(route|generate-gpx)$`, fixed window 600 s, 100 requests per IP, 429.
+- **Vercel Web Analytics** is enabled (`<Analytics />` in `frontend/src/App.tsx`; cookieless, described
+  in the Terms of Service).
+- **Google Search Console**: domain property verified with a TXT record at the domain provider
+  (keep that record).
 
 ## Link preview image
 

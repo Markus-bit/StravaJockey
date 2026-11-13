@@ -70,6 +70,12 @@ Things that work differently on Vercel than on a single always-on server:
 - Security headers for the site come from `vercel.json` (the API still sets its own).
 - The Hobby plan is for personal, non-commercial use.
 
+## Link preview image
+
+`frontend/public/og-image.png` (1200 × 630) is shown when the site's link is shared. It's rendered
+from `scripts/og-image.html`; after changing the name, colour or text, regenerate it as described at
+the top of that file. The meta tags in `frontend/index.html` point to `https://www.stravajockey.com`.
+
 ## Limits and protection
 
 All configurable via environment variables, see `.env.example`:

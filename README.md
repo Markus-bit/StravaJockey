@@ -1,8 +1,13 @@
 # StravaJockey
 
+[![CI](https://github.com/Markus-bit/StravaJockey/actions/workflows/ci.yml/badge.svg)](https://github.com/Markus-bit/StravaJockey/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Draw a route on a map, choose pace and heart rate settings, and download it as a GPX file.
 
-Live at **https://www.stravajockey.com** (hosted on Vercel; `stravajockey.com` redirects to `www`).
+**Live: [www.stravajockey.com](https://www.stravajockey.com)**
+
+![StravaJockey](frontend/public/og-image.png)
 
 ## What it does
 
@@ -16,6 +21,15 @@ Live at **https://www.stravajockey.com** (hosted on Vercel; `stravajockey.com` r
 - **Download GPX**: track points every 25 m with timestamps, elevation and heart rate
   (Garmin TrackPointExtension). The charts and the file use the same random seed, so the file
   matches the preview.
+
+## Tech stack
+
+- **Frontend:** React 19, TypeScript, Vite, Mapbox GL JS, hand-drawn SVG charts, Lucide icons
+- **API:** Node.js, Express 5, TypeScript, Zod validation, Helmet, express-rate-limit, Pino logging
+- **Data:** Mapbox Directions / Map Matching (routing), Mapbox Terrain-RGB tiles (elevation),
+  OpenTopoData (elevation fallback)
+- **Quality:** Vitest (unit + API tests), ESLint, GitHub Actions CI, npm audit
+- **Hosting:** Vercel (Services: CDN-served frontend + Express function), Vercel Firewall and Web Analytics
 
 ## Project structure
 
@@ -130,3 +144,8 @@ All configurable via environment variables, see `.env.example`:
 - Routes: at most 200 clicked points and 300 km.
 - Security headers (Content-Security-Policy etc.) via helmet; request bodies limited to 100 kB.
 - Errors are returned as `{ "error": "<message for the user>" }`; details only go to the server log.
+
+## License
+
+[MIT](LICENSE). "Strava" is a trademark of Strava, Inc.; this project is independent and not
+affiliated with or endorsed by Strava.

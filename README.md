@@ -22,7 +22,7 @@ Live at **https://www.stravajockey.com** (hosted on Vercel; `stravajockey.com` r
 | Path | What |
 |---|---|
 | `src/` | Express + TypeScript API: routing (Mapbox), elevation (Mapbox terrain tiles, OpenTopoData fallback), pace/heart rate generation, GPX writer |
-| `frontend/` | React + Vite app: map, Run Details panel, charts, help and terms dialogs |
+| `frontend/` | React + Vite app: map, Run Details panel, charts, help and terms dialogs. All styles are in `frontend/src/index.css`; the brand colour is `--brand` at the top |
 | `tests/` | Vitest unit and API tests |
 | `scripts/og-image.html` | Template for the link preview image |
 | `vercel.json` | Vercel deployment (two services, security headers) |

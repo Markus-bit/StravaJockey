@@ -43,7 +43,7 @@ describe("enrichElevation (Mapbox terrain tiles with OpenTopoData fallback)", ()
 
   it("falls back to OpenTopoData when Mapbox rejects the token", async () => {
     stubHttp((url) => {
-      if (url.includes("mapbox.com")) return { status: 401, data: "" };
+      if (new URL(url).hostname === "api.mapbox.com") return { status: 401, data: "" };
       const locs = decodeURIComponent(url.split("locations=")[1]).split("|");
       return { data: { results: locs.map(() => ({ elevation: 77 })) } };
     });

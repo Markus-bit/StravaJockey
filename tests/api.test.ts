@@ -77,3 +77,19 @@ describe("API", () => {
     expect(await r.json()).toEqual({ error: "Not found" });
   });
 });
+
+describe("error messages", () => {
+  it("recognises Mapbox by hostname, not by a substring of the URL", async () => {
+    const { sendError } = await import("../src/errors");
+    const { default: axios } = await import("axios");
+    const reply = (url: string) => {
+      const err = new axios.AxiosError("fail", undefined, { url } as never, undefined, { status: 422, data: { message: "too far" } } as never);
+      let body: unknown;
+      const res = { status: () => res, json: (b: unknown) => { body = b; return res; } };
+      sendError(res as never, err, "test");
+      return (body as { error: string }).error;
+    };
+    expect(reply("https://api.mapbox.com/directions/v5/mapbox/walking/1,2;3,4")).toBe("No route could be found: too far");
+    expect(reply("https://evil.example/?api.mapbox.com")).toBe("An external service didn't respond. Please try again in a moment.");
+  });
+});

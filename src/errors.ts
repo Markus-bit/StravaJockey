@@ -40,7 +40,7 @@ function classify(e: unknown): { status: number; message: string; log: Record<st
     const url = e.config?.url ? safeUrl(e.config.url) : undefined;
     const status = e.response?.status;
     const log = { upstream: url, upstreamStatus: status, code: e.code };
-    const isMapbox = url?.includes("mapbox.com");
+    const isMapbox = isMapboxHost(e.config?.url);
     if (status === 401 || status === 403) {
       const hint = isMapbox
         ? `Mapbox rejected MAPBOX_TOKEN (HTTP ${status}). Check in the Mapbox dashboard that the token still exists ` +
@@ -75,5 +75,17 @@ function safeUrl(u: string): string {
     return `${url.host}${url.pathname.split("/").slice(0, 4).join("/")}`; // no query, no coordinates
   } catch {
     return "unknown";
+  }
+}
+
+// Compare the parsed hostname, not a substring of the URL
+// (a substring check would also match e.g. https://evil.example/?mapbox.com)
+function isMapboxHost(u: string | undefined): boolean {
+  if (!u) return false;
+  try {
+    const host = new URL(u).hostname;
+    return host === "mapbox.com" || host.endsWith(".mapbox.com");
+  } catch {
+    return false;
   }
 }

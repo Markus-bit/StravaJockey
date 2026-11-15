@@ -1,6 +1,6 @@
 // Terms of Service + privacy notice. DRAFT: have it reviewed before relying on it.
 const SITE = "StravaJockey";
-const LAST_UPDATED = "November 11, 2026";
+const LAST_UPDATED = "November 15, 2026";
 
 export default function TermsContent() {
   return (
@@ -71,6 +71,11 @@ export default function TermsContent() {
           other identifiers that could track you across sites; visits are only recognised for 24 hours
           by an anonymous hash. We see aggregated statistics only: which page was opened, the referring
           site, approximate location (country/city), browser, operating system and device type.
+        </li>
+        <li>
+          We also keep our own daily totals of what is used on the site, for example how many routes
+          were snapped and how many files were downloaded. Only the action and the date are stored;
+          nothing that identifies you or your device.
         </li>
         <li>
           The points you click and the route generated from them are sent to our server to build the

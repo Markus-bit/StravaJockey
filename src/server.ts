@@ -6,6 +6,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { logger } from "./logger";
 import router from "./routes";
+import statsRouter from "./statsRoutes";
 import { config } from "./config";
 
 const app = express();
@@ -63,6 +64,10 @@ app.use("/api", limiter(config.rateLimit.allApi, windowMs, slowDown));
 app.use("/api/route", limiter(config.rateLimit.route, windowMs, slowDown));
 app.use("/api/generate-gpx", limiter(config.rateLimit.generateGpx, windowMs, "You've downloaded a lot of files in a short time. Please wait a few minutes and try again."));
 app.use("/api/activity-preview", limiter(config.rateLimit.previewPerMinute, 60_000, slowDown));
+app.use("/api/event", limiter(120, 60_000, slowDown));
+app.use("/api/stats", limiter(30, windowMs, slowDown)); // password guessing
+
+app.use("/api", statsRouter);
 
 app.use("/api", router);
 

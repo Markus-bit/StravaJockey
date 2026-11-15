@@ -29,7 +29,8 @@ Draw a route on a map, choose pace and heart rate settings, and download it as a
 - **Data:** Mapbox Directions / Map Matching (routing), Mapbox Terrain-RGB tiles (elevation),
   OpenTopoData (elevation fallback)
 - **Quality:** Vitest (unit + API tests), ESLint, GitHub Actions CI, npm audit
-- **Hosting:** Vercel (Services: CDN-served frontend + Express function), Vercel Firewall and Web Analytics
+- **Hosting:** Vercel (Services: CDN-served frontend + Express function), Vercel Firewall and Web Analytics,
+  Upstash Redis (usage counters)
 
 ## Project structure
 
@@ -126,6 +127,11 @@ Things that work differently on Vercel than on a single always-on server:
   `^/api/(route|generate-gpx)$`, fixed window 600 s, 100 requests per IP, 429.
 - **Vercel Web Analytics** is enabled (`<Analytics />` in `frontend/src/App.tsx`; cookieless, described
   in the Terms of Service).
+- **Usage stats**: our own daily counters (visits, snaps, download clicks, downloads, errors,
+  help dialogs) in Upstash Redis (Vercel Marketplace, free plan, connected to the project).
+  View them at [`/api/stats`](https://www.stravajockey.com/api/stats) with the password in
+  `STATS_PASSWORD`. Only event names and dates are stored. Code: `src/services/stats.ts`,
+  `src/statsRoutes.ts`, `frontend/src/track.ts`.
 - **Google Search Console**: domain property verified with a TXT record at the domain provider
   (keep that record).
 

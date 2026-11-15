@@ -5,6 +5,7 @@ import { Info, Route as RouteIcon, Upload } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
+import { track, trackVisit } from "./track";
 import Toasts, { type Toast } from "./Toasts";
 import { initialMapView, saveMapView } from "./mapStart";
 import ActivityCharts, { type ActivityPreview, type ElevationProfile } from "./ActivityCharts";
@@ -54,6 +55,11 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
+  function openHelp(topic: HelpTopic) {
+    track(topic === "how-it-works" ? "help_how_it_works" : topic === "how-to-upload" ? "help_how_to_upload" : "help_terms");
+    setHelpTopic(topic);
+  }
+  useEffect(() => trackVisit(), []);
   const [mapError, setMapError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
@@ -305,15 +311,16 @@ async function postJson(url: string, body: unknown) {
 
 function snapToRoad() {
   if (waypoints.length < 2) return notify("Place at least two points on the map.");
+  track("snap_click");
   const pts = [...waypoints];
   // Hide the old points and the dashed line right away
   clearTempOverlays();
   setWaypoints([]); // also triggers the effect that keeps the map sources in sync
-  return snapPoints(pts, settings.sport);
+  return snapPoints(pts, settings.sport, true);
 }
 
 // Fetch the snapped route (fast), then the elevation in the background
-async function snapPoints(pts: LngLat[], sport: Sport) {
+async function snapPoints(pts: LngLat[], sport: Sport, fromClick = false) {
   const id = ++routeRequestId.current;
   const body = { profile: routingProfile(sport), spacingM: SPACING_M, points: pts };
   setBusy(true);
@@ -328,7 +335,9 @@ async function snapPoints(pts: LngLat[], sport: Sport) {
     setElevationProfile(null);
     setSeed(randomSeed());
     fitToLine(data.geometry.coordinates as [number, number][]);
+    if (fromClick) track("snap_success");
   } catch (e) {
+    if (fromClick) track("snap_error");
     notify(errorText(e));
     return;
   } finally {
@@ -448,6 +457,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
     const s = settings;
     const name = s.name.trim();
     if (pts.length < 2 || snappedCoords.length === 0 || !name) return; // button is disabled then
+    track("download_click");
     setBusy(true);
     setDownloading(true);
     try {
@@ -473,7 +483,9 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       a.download = gpxFileName(name);
       a.click();
       URL.revokeObjectURL(url);
+      track("download_success");
     } catch (e) {
+      track("download_error");
       notify(errorText(e));
     } finally {
       setBusy(false);
@@ -492,11 +504,11 @@ function updateSettings(patch: Partial<ActivitySettings>) {
         </a>
         <span className="brand-tagline">GPX route generator</span>
         <nav className="header-nav" aria-label="Help">
-          <button type="button" className="nav-link" onClick={() => setHelpTopic("how-it-works")}>
+          <button type="button" className="nav-link" onClick={() => openHelp("how-it-works")}>
             <Info size={16} aria-hidden="true" />
             How it works
           </button>
-          <button type="button" className="nav-link" onClick={() => setHelpTopic("how-to-upload")}>
+          <button type="button" className="nav-link" onClick={() => openHelp("how-to-upload")}>
             <Upload size={16} aria-hidden="true" />
             How to upload
           </button>
@@ -563,7 +575,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       <footer className="app-footer">
         <span className="footer-copy">© {new Date().getFullYear()} StravaJockey. All rights reserved.</span>
         <nav className="footer-links" aria-label="Footer">
-          <button type="button" onClick={() => setHelpTopic("terms")}>
+          <button type="button" onClick={() => openHelp("terms")}>
             Terms of Service
           </button>
         </nav>

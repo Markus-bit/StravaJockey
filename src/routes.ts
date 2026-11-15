@@ -14,7 +14,7 @@ import type { LngLat, MatchedPoint } from "./domain/types";
 import { config } from "./config";
 import { HttpError, sendError } from "./errors";
 import { cachedRoute, routeKey } from "./services/routeCache";
-import { countEvent } from "./services/stats";
+import { countEvent, countryFrom, gpxFields } from "./services/stats";
 
 const router = Router();
 
@@ -183,7 +183,14 @@ router.post("/generate-gpx", async (req, res) => {
     const bytes = Buffer.from(gpx, "utf8");
     const CHUNK = 256 * 1024;
     for (let i = 0; i < bytes.length; i += CHUNK) res.write(bytes.subarray(i, i + CHUNK));
-    await countEvent("gpx_generated"); // before end(): a Vercel function stops once it has answered
+    // usage stats: daily totals only (before end(): a Vercel function stops once it has answered)
+    await countEvent("gpx_generated", gpxFields({
+      sport: type === "cycling" ? "bike" : "run",
+      distanceKm: (dists[dists.length - 1] ?? 0) / 1000,
+      paceSecPerKm: parsed.paceSecPerKm,
+      heartRate: Boolean(parsed.heartRate),
+      country: countryFrom(req.headers["x-vercel-ip-country"]),
+    }));
     res.end();
   } catch (e) {
     sendError(res, e, "generate-gpx");

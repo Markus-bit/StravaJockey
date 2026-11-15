@@ -37,7 +37,7 @@ Draw a route on a map, choose pace and heart rate settings, and download it as a
 | Path | What |
 |---|---|
 | `src/` | Express + TypeScript API: routing (Mapbox), elevation (Mapbox terrain tiles, OpenTopoData fallback), pace/heart rate generation, GPX writer |
-| `frontend/` | React + Vite app: map, Run Details panel, charts, help and terms dialogs. All styles are in `frontend/src/index.css`; the brand colour is `--brand` at the top |
+| `frontend/` | React + Vite app: map, Run Details panel, charts, help and terms dialogs; `stats/` + `src/stats/` is the private stats dashboard. All styles are in `frontend/src/index.css`; the brand colour is `--brand` at the top |
 | `tests/` | Vitest unit and API tests |
 | `scripts/og-image.html` | Template for the link preview image |
 | `vercel.json` | Vercel deployment (two services, security headers) |
@@ -127,11 +127,12 @@ Things that work differently on Vercel than on a single always-on server:
   `^/api/(route|generate-gpx)$`, fixed window 600 s, 100 requests per IP, 429.
 - **Vercel Web Analytics** is enabled (`<Analytics />` in `frontend/src/App.tsx`; cookieless, described
   in the Terms of Service).
-- **Usage stats**: our own daily counters (visits, snaps, download clicks, downloads, errors,
-  help dialogs) in Upstash Redis (Vercel Marketplace, free plan, connected to the project).
-  View them at [`/api/stats`](https://www.stravajockey.com/api/stats) with the password in
-  `STATS_PASSWORD`. Only event names and dates are stored. Code: `src/services/stats.ts`,
-  `src/statsRoutes.ts`, `frontend/src/track.ts`.
+- **Usage stats**: our own daily totals in Upstash Redis (Vercel Marketplace, free plan, connected to
+  the project): visits, snaps, download clicks, downloads, errors, help dialogs, plus run/bike,
+  distance, pace/speed, heart rate on/off, hour, device type, country and traffic source, all as
+  counts per day. Dashboard with charts at [`/stats`](https://www.stravajockey.com/stats/), password
+  in `STATS_PASSWORD`. Code: `src/services/stats.ts`, `src/statsRoutes.ts`, `frontend/src/track.ts`,
+  `frontend/src/stats/`.
 - **Google Search Console**: domain property verified with a TXT record at the domain provider
   (keep that record).
 

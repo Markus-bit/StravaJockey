@@ -73,9 +73,12 @@ export default function TermsContent() {
           site, approximate location (country/city), browser, operating system and device type.
         </li>
         <li>
-          We also keep our own daily totals of what is used on the site, for example how many routes
-          were snapped and how many files were downloaded. Only the action and the date are stored;
-          nothing that identifies you or your device.
+          We also keep our own daily totals of how the site is used: for example how many routes were
+          snapped and files downloaded, run or bike, the route length and pace in broad ranges, the
+          hour of the day, the type of device (mobile, tablet or desktop), the country (from the
+          request, not stored with anything else) and the kind of site that linked here (for example
+          "Google"). These are only counted as totals per day; nothing that identifies you or your
+          device is stored.
         </li>
         <li>
           The points you click and the route generated from them are sent to our server to build the

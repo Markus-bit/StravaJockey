@@ -869,11 +869,13 @@ input[type="range"]:focus-visible {
   }
   .app-footer {
     flex-direction: column-reverse;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
     gap: 12px;
     padding: 24px 16px;
   }
   .footer-links {
+    justify-content: center;
     gap: 24px;
   }
   .controls-panel {
@@ -888,6 +890,9 @@ input[type="range"]:focus-visible {
 .help-dialog {
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
+  /* svh = the visible height when the phone browser's bars are showing; plain vh is taller
+     on iPhone, which pushed the title and close button under Safari's address bar */
+  max-height: calc(100svh - 48px);
   padding: 0;
   border: none;
   border-radius: 16px;
@@ -917,7 +922,14 @@ input[type="range"]:focus-visible {
   /* the body scrolls (not the <dialog>), so clicking the scrollbar doesn't count as a backdrop click;
      the title bar above it stays in place */
   overflow-y: auto;
+  /* reaching the end of the text must not start scrolling the page behind */
+  overscroll-behavior: contain;
   padding: 0 26px 26px;
+}
+/* the page behind doesn't scroll while a dialog is open */
+html:has(.help-dialog[open]),
+html:has(.help-dialog[open]) body {
+  overflow: hidden;
 }
 .help-head {
   flex-shrink: 0;

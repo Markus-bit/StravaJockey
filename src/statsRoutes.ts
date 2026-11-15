@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import { timingSafeEqual, createHash } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { EVENTS, countEvent, readStats, statsEnabled, type DayCounts, type StatsEvent } from "./services/stats";
 import { logger } from "./logger";
@@ -23,9 +23,9 @@ function passwordOk(req: Request): boolean {
   if (!expected || !header.startsWith("Basic ")) return false;
   const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
   const given = decoded.slice(decoded.indexOf(":") + 1); // any username
-  // compare hashes so the comparison takes the same time whatever the input
-  const h = (s: string) => createHash("sha256").update(s).digest();
-  return timingSafeEqual(h(given), h(expected));
+  // constant-time comparison (only the length can be told apart, which is fine)
+  const a = Buffer.from(given, "utf8"), b = Buffer.from(expected, "utf8");
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 router.get("/stats", async (req, res) => {

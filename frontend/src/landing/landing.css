@@ -237,7 +237,6 @@ a { color: inherit; }
   display: block; width: 100%; height: auto; aspect-ratio: 1120 / 700; border-radius: 18px; background: var(--soft);
   box-shadow: 0 1px 0 var(--line), 0 24px 60px rgba(19, 20, 31, 0.14);
 }
-.demo-video figcaption { margin-top: 12px; text-align: center; font-size: 14px; color: var(--muted); }
 @media (max-width: 640px) {
   .demo-video { margin-top: 24px; }
   .demo-video video { border-radius: 12px; }

@@ -86,8 +86,8 @@ if (fs.existsSync(indexHtml)) {
       },
     })
   );
-  // The guides, the route planner and the private stats dashboard are their own pages
-  for (const page of ["how-it-works", "how-to-upload", "app", "stats"]) {
+  // The guides, the terms, the route planner and the private stats dashboard are their own pages
+  for (const page of ["how-it-works", "how-to-upload", "terms", "app", "stats"]) {
     const html = path.join(staticDir, page, "index.html");
     app.get([`/${page}`, `/${page}/`], (_req, res) => {
       res.setHeader("Cache-Control", "no-cache");

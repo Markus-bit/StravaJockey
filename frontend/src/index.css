@@ -771,17 +771,21 @@ input[type="range"]:focus-visible {
   display: flex;
   gap: 32px;
 }
+.footer-links a,
 .footer-links button {
   padding: 0;
+  text-decoration: none;
   border: none;
   background: none;
   color: #111827;
   font: inherit;
   cursor: pointer;
 }
+.footer-links a:hover,
 .footer-links button:hover {
   color: var(--brand);
 }
+.footer-links a:focus-visible,
 .footer-links button:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
   outline-offset: 3px;
@@ -842,108 +846,6 @@ input[type="range"]:focus-visible {
   .run-details {
     padding: 20px 16px;
   }
-}
-
-/* Help dialogs ("How it works" / "How to upload") */
-.help-dialog {
-  width: min(560px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
-  /* svh = the visible height when the phone browser's bars are showing; plain vh is taller
-     on iPhone, which pushed the title and close button under Safari's address bar */
-  max-height: calc(100svh - 48px);
-  padding: 0;
-  border: none;
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.25);
-  color: #111827;
-  font-family: inherit;
-}
-.help-dialog::backdrop {
-  background: rgba(15, 23, 42, 0.45);
-}
-.help-dialog[open] {
-  animation: help-in 0.16s ease-out;
-}
-@keyframes help-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .help-dialog[open] { animation: none; }
-}
-.help-dialog[open] {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.help-body {
-  /* the body scrolls (not the <dialog>), so clicking the scrollbar doesn't count as a backdrop click;
-     the title bar above it stays in place */
-  overflow-y: auto;
-  /* reaching the end of the text must not start scrolling the page behind */
-  overscroll-behavior: contain;
-  padding: 0 26px 26px;
-}
-/* the page behind doesn't scroll while a dialog is open */
-html:has(.help-dialog[open]),
-html:has(.help-dialog[open]) body {
-  overflow: hidden;
-}
-.help-head {
-  flex-shrink: 0;
-  padding: 22px 26px 6px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.help-head h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-}
-.help-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-}
-.help-close:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-/* Terms of Service text */
-.terms {
-  font-size: 15px;
-  line-height: 1.55;
-  color: #374151;
-}
-.terms-updated {
-  margin: 4px 0 8px;
-  font-size: 13px;
-  color: #6b7280;
-}
-.terms h3 {
-  margin: 20px 0 6px;
-  font-size: 16px;
-  color: #111827;
-}
-.terms p {
-  margin: 0 0 8px;
-}
-.terms ul {
-  margin: 0 0 8px;
-  padding-left: 20px;
-}
-.terms li {
-  margin-bottom: 6px;
 }
 
 /* Full-width download button at the bottom of Run Details */

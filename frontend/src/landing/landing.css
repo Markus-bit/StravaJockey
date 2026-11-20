@@ -207,3 +207,13 @@ a { color: inherit; }
   .page-hero .narrow { padding-top: 48px; padding-bottom: 40px; }
   .guide > li { padding: 18px; gap: 14px; }
 }
+
+/* ---------- terms page (/terms/) */
+.terms-section { padding-top: 48px; padding-bottom: 96px; }
+.terms { color: var(--ink-2); font-size: 16px; }
+.terms-updated { color: var(--muted); font-size: 14px; }
+.terms h2 { font-family: var(--heading); color: var(--ink); font-size: 22px; letter-spacing: -0.01em; margin: 36px 0 10px; }
+.terms p + p, .terms p + ul { margin-top: 10px; }
+.terms ul { margin: 10px 0 0; padding-left: 22px; }
+.terms li + li { margin-top: 8px; }
+.l-footer-links a[aria-current="page"] { color: var(--brand-strong); }

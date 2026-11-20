@@ -86,12 +86,14 @@ if (fs.existsSync(indexHtml)) {
       },
     })
   );
-  // The private stats dashboard is its own page
-  const statsHtml = path.join(staticDir, "stats", "index.html");
-  app.get(["/stats", "/stats/"], (_req, res) => {
-    res.setHeader("Cache-Control", "no-cache");
-    res.sendFile(statsHtml);
-  });
+  // The route planner and the private stats dashboard are their own pages
+  for (const page of ["app", "stats"]) {
+    const html = path.join(staticDir, page, "index.html");
+    app.get([`/${page}`, `/${page}/`], (_req, res) => {
+      res.setHeader("Cache-Control", "no-cache");
+      res.sendFile(html);
+    });
+  }
   // Single-page app: every other GET serves index.html (never cached, so new deploys show up)
   app.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next();

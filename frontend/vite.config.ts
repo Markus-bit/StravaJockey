@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      // two pages: the site, and the private stats dashboard at /stats/
+      // three pages: the landing page (/), the route planner (/app/) and the private stats dashboard (/stats/)
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
+        app: resolve(import.meta.dirname, 'app/index.html'),
         stats: resolve(import.meta.dirname, 'stats/index.html'),
       },
     },

@@ -60,6 +60,10 @@ export default function App() {
     setHelpTopic(topic);
   }
   useEffect(() => trackVisit(), []);
+  // /app/#terms (linked from the landing page) opens the Terms of Service
+  useEffect(() => {
+    if (location.hash === "#terms") setHelpTopic("terms");
+  }, []);
   const [mapError, setMapError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);

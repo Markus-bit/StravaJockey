@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
-import { Info, Route as RouteIcon, Upload } from "lucide-react";
+import { Route as RouteIcon } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import RunDetails from "./RunDetails";
 import HelpDialog, { type HelpTopic } from "./HelpDialogs";
@@ -56,7 +56,7 @@ export default function App() {
   const [downloading, setDownloading] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
   function openHelp(topic: HelpTopic) {
-    track(topic === "how-it-works" ? "help_how_it_works" : topic === "how-to-upload" ? "help_how_to_upload" : "help_terms");
+    track("help_terms");
     setHelpTopic(topic);
   }
   useEffect(() => trackVisit(), []);
@@ -507,16 +507,6 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           <span className="brand-name">StravaJockey</span>
         </a>
         <span className="brand-tagline">GPX route generator</span>
-        <nav className="header-nav" aria-label="Help">
-          <button type="button" className="nav-link" onClick={() => openHelp("how-it-works")}>
-            <Info size={16} aria-hidden="true" />
-            How it works
-          </button>
-          <button type="button" className="nav-link" onClick={() => openHelp("how-to-upload")}>
-            <Upload size={16} aria-hidden="true" />
-            How to upload
-          </button>
-        </nav>
       </header>
       <HelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
       <div className="content">

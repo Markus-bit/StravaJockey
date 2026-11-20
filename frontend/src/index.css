@@ -71,44 +71,6 @@ html, body, #root {
   font-size: 13px;
   white-space: nowrap;
 }
-.header-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-.nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #374151;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.nav-link svg {
-  flex-shrink: 0;
-  color: #9ca3af;
-  transition: color 0.15s ease;
-}
-.nav-link:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-.nav-link:hover svg {
-  color: var(--brand);
-}
-.nav-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--brand) 50%, transparent);
-  outline-offset: 1px;
-}
 .content {
   flex: 1;
   display: flex;
@@ -843,10 +805,6 @@ input[type="range"]:focus-visible {
   .brand-name {
     font-size: 17px;
   }
-  .nav-link {
-    padding: 8px;
-    font-size: 13px;
-  }
   .content {
     flex-direction: column;
     padding: 16px;
@@ -961,80 +919,6 @@ html:has(.help-dialog[open]) body {
   background: #f3f4f6;
   color: #111827;
 }
-.help-intro {
-  margin: 8px 0 20px;
-  color: #6b7280;
-  font-size: 15px;
-  line-height: 1.5;
-}
-.help-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.help-steps li {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-.help-num {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--brand);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-}
-.help-steps strong {
-  display: block;
-  margin-top: 3px;
-  font-size: 16px;
-}
-.help-steps p {
-  margin: 4px 0 0;
-  color: #374151;
-  font-size: 15px;
-  line-height: 1.5;
-}
-.help-bullets {
-  margin: 6px 0 0;
-  padding-left: 18px;
-  color: #374151;
-  font-size: 15px;
-  line-height: 1.5;
-}
-/* undo the step-row styles (.help-steps li) for the nested bullet list */
-.help-steps .help-bullets li {
-  display: list-item;
-  list-style: disc;
-  margin-bottom: 2px;
-}
-.help-bullets li::marker {
-  color: #9ca3af;
-}
-.help-steps p.help-small {
-  margin-top: 6px;
-  color: #6b7280;
-  font-size: 13px;
-}
-.help-note {
-  margin: 20px 0 0;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--brand) 8%, transparent);
-  color: var(--brand-ink);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
 /* Terms of Service text */
 .terms {
   font-size: 15px;
@@ -1106,15 +990,8 @@ html:has(.help-dialog[open]) body {
   outline-offset: 3px;
 }
 
-/* Very narrow phones: text-only help links, smaller logo */
+/* Very narrow phones: smaller logo */
 @media (max-width: 420px) {
-  .nav-link svg {
-    display: none;
-  }
-  .nav-link {
-    padding: 8px 6px;
-    font-size: 12.5px;
-  }
   .brand {
     gap: 8px;
   }

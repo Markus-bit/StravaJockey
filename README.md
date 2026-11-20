@@ -37,7 +37,7 @@ Draw a route on a map, choose pace and heart rate settings, and download it as a
 | Path | What |
 |---|---|
 | `src/` | Express + TypeScript API: routing (Mapbox), elevation (Mapbox terrain tiles, OpenTopoData fallback), pace/heart rate generation, GPX writer |
-| `frontend/` | Three pages: the landing page at `/` (`index.html` + `src/landing/`, plain HTML/CSS), the route planner at `/app/` (`app/index.html` + React app: map, Run Details panel, charts, help and terms dialogs) and the private stats dashboard at `/stats/` (`stats/` + `src/stats/`). All styles are in `frontend/src/index.css`; the brand colour is `--brand` at the top |
+| `frontend/` | The landing page at `/` and the guides at `/how-it-works/` and `/how-to-upload/` (`index.html`, `how-it-works/`, `how-to-upload/` + `src/landing/`, plain HTML/CSS), the route planner at `/app/` (`app/index.html` + React app: map, Run Details panel, charts, terms dialog) and the private stats dashboard at `/stats/` (`stats/` + `src/stats/`). All styles are in `frontend/src/index.css`; the brand colour is `--brand` at the top |
 | `tests/` | Vitest unit and API tests |
 | `scripts/og-image.html` | Template for the link preview image |
 | `vercel.json` | Vercel deployment (two services, security headers) |

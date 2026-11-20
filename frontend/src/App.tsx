@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl, { type LngLatLike, Map } from "mapbox-gl";
 import locateIcon from "./assets/my-location.png";
-import { Info, Route as RouteIcon, Upload } from "lucide-react";
+import { Route as RouteIcon } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import RunDetails from "./RunDetails";
-import HelpDialog, { type HelpTopic } from "./HelpDialogs";
 import { track, trackVisit } from "./track";
 import Toasts, { type Toast } from "./Toasts";
 import { initialMapView, saveMapView } from "./mapStart";
@@ -54,11 +53,6 @@ export default function App() {
   const [settings, setSettings] = useState<ActivitySettings>(initialSettings);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
-  function openHelp(topic: HelpTopic) {
-    track(topic === "how-it-works" ? "help_how_it_works" : topic === "how-to-upload" ? "help_how_to_upload" : "help_terms");
-    setHelpTopic(topic);
-  }
   useEffect(() => trackVisit(), []);
   const [mapError, setMapError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -503,18 +497,7 @@ function updateSettings(patch: Partial<ActivitySettings>) {
           <span className="brand-name">StravaJockey</span>
         </a>
         <span className="brand-tagline">GPX route generator</span>
-        <nav className="header-nav" aria-label="Help">
-          <button type="button" className="nav-link" onClick={() => openHelp("how-it-works")}>
-            <Info size={16} aria-hidden="true" />
-            How it works
-          </button>
-          <button type="button" className="nav-link" onClick={() => openHelp("how-to-upload")}>
-            <Upload size={16} aria-hidden="true" />
-            How to upload
-          </button>
-        </nav>
       </header>
-      <HelpDialog topic={helpTopic} onClose={() => setHelpTopic(null)} />
       <div className="content">
         <div className="left-column">
           <section className="map-panel">
@@ -575,9 +558,10 @@ function updateSettings(patch: Partial<ActivitySettings>) {
       <footer className="app-footer">
         <span className="footer-copy">© {new Date().getFullYear()} StravaJockey. All rights reserved.</span>
         <nav className="footer-links" aria-label="Footer">
-          <button type="button" onClick={() => openHelp("terms")}>
+          {/* new tab, so a route being drawn here isn't lost */}
+          <a href="/terms/" target="_blank" rel="noopener">
             Terms of Service
-          </button>
+          </a>
         </nav>
       </footer>
       <Toasts toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />

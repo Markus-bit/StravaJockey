@@ -1,8 +1,9 @@
-/* Landing page. The brand colour matches the planner (--brand in ../index.css);
-   --brand-strong is a darker step so white text on it is readable (4.5:1). */
+/* Landing page. The brand colour matches the planner (--brand in ../index.css) and is used for
+   every orange button. --brand-strong is a darker step for small orange text (readable at 4.5:1). */
 :root {
   --brand: #fc4c02;
   --brand-strong: #d63f00;
+  --brand-hover: color-mix(in srgb, var(--brand) 82%, white); /* same hover as the planner's buttons */
   --ink: #13141f;
   --ink-2: #3d404c;
   --muted: #5b5e6b;
@@ -42,8 +43,8 @@ a { color: inherit; }
   transition: background 0.15s, transform 0.15s;
 }
 .btn-lg { min-height: 52px; padding: 14px 24px; border-radius: 12px; font-size: 17px; font-weight: 700; }
-.btn-brand { background: var(--brand-strong); color: #fff; }
-.btn-brand:hover { background: #bf3800; }
+.btn-brand { background: var(--brand); color: #fff; }
+.btn-brand:hover { background: var(--brand-hover); }
 .btn-outline { background: #fff; border: 1px solid #d5d8de; color: var(--ink); }
 .btn-outline:hover { background: var(--soft); }
 .btn-light { background: #fff; color: var(--ink); }
@@ -146,7 +147,7 @@ a { color: inherit; }
 .faq details p { margin-top: 10px; color: var(--ink-2); }
 
 .cta-band {
-  background: var(--brand-strong); color: #fff; border-radius: 24px; padding: 56px 40px;
+  background: var(--brand); color: #fff; border-radius: 24px; padding: 56px 40px;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px;
 }
 .cta-band > div { flex: 1 1 420px; min-width: 0; }
@@ -158,7 +159,9 @@ a { color: inherit; }
 .l-footer-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 16px; padding-top: 28px; padding-bottom: 12px; }
 .l-footer-links { display: flex; flex-wrap: wrap; gap: 8px 28px; }
 .l-footer-links a { text-decoration: none; color: var(--ink); }
-.l-footer-links a:hover { color: var(--brand-strong); }
+.l-footer-links a:hover { color: var(--brand); }
+.l-footer-links a[href="/terms/"] { color: var(--brand); } /* Terms of Service is always orange */
+.l-footer-links a[href="/terms/"]:hover { color: color-mix(in srgb, var(--brand) 80%, black); }
 .disclaimer { font-size: 13px; padding-bottom: 28px; }
 
 /* ---------- phones */
@@ -214,7 +217,7 @@ a { color: inherit; }
 .terms p + p, .terms p + ul { margin-top: 10px; }
 .terms ul { margin: 10px 0 0; padding-left: 22px; }
 .terms li + li { margin-top: 8px; }
-.l-footer-links a[aria-current="page"] { color: var(--brand-strong); }
+
 
 /* very narrow phones (iPhone SE): keep logo and button on one row */
 @media (max-width: 380px) {

@@ -777,13 +777,13 @@ input[type="range"]:focus-visible {
   text-decoration: none;
   border: none;
   background: none;
-  color: #111827;
+  color: var(--brand); /* Terms of Service is always orange */
   font: inherit;
   cursor: pointer;
 }
 .footer-links a:hover,
 .footer-links button:hover {
-  color: var(--brand);
+  color: color-mix(in srgb, var(--brand) 80%, black);
 }
 .footer-links a:focus-visible,
 .footer-links button:focus-visible {

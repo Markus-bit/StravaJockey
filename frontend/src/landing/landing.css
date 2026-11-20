@@ -229,3 +229,16 @@ a { color: inherit; }
   .l-nav-links .btn { padding: 8px 12px; font-size: 14px; }
   .l-nav-links > a:not(.btn) { font-size: 14px; }
 }
+
+/* demo video on /how-it-works/ */
+.demo { max-width: 1000px; padding-top: 0; }
+.demo-video { margin: -24px 0 0; }
+.demo-video video {
+  display: block; width: 100%; height: auto; aspect-ratio: 1120 / 700; border-radius: 18px; background: var(--soft);
+  box-shadow: 0 1px 0 var(--line), 0 24px 60px rgba(19, 20, 31, 0.14);
+}
+.demo-video figcaption { margin-top: 12px; text-align: center; font-size: 14px; color: var(--muted); }
+@media (max-width: 640px) {
+  .demo-video { margin-top: 24px; }
+  .demo-video video { border-radius: 12px; }
+}

@@ -40,6 +40,7 @@ Draw a route on a map, choose pace and heart rate settings, and download it as a
 | `frontend/` | The landing page at `/` and the guides at `/how-it-works/` and `/how-to-upload/`, and the Terms of Service at `/terms/` (`index.html`, `how-it-works/`, `how-to-upload/`, `terms/` + `src/landing/`, plain HTML/CSS), the route planner at `/app/` (`app/index.html` + React app: map, Run Details panel, charts) and the private stats dashboard at `/stats/` (`stats/` + `src/stats/`). All styles are in `frontend/src/index.css`; the brand colour is `--brand` at the top |
 | `tests/` | Vitest unit and API tests |
 | `scripts/og-image.html` | Template for the link preview image |
+| `frontend/public/media/` | Demo video on the How it works page (MP4 + poster; the music is synthesized, no third-party audio) |
 | `vercel.json` | Vercel deployment (two services, security headers) |
 | `.github/workflows/ci.yml` | CI: type-check, tests, lint, build, dependency audit |
 

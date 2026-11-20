@@ -12,3 +12,15 @@ trackVisit(); // once per browser tab, so going on to the planner doesn't count 
 const PAGE_EVENTS: TrackEvent[] = ["help_how_it_works", "help_how_to_upload", "help_terms"];
 const page = document.body.dataset.track as TrackEvent | undefined;
 if (page && PAGE_EVENTS.includes(page)) track(page);
+
+// Demo video on /how-it-works/: start it (muted, as browsers require for autoplay) once the page
+// has fully loaded. Visitors who ask for reduced motion get the poster and the play button instead.
+const demo = document.querySelector<HTMLVideoElement>("video[data-autoplay]");
+if (demo && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const start = () => {
+    demo.muted = true;
+    demo.play().catch(() => { /* blocked (e.g. power saving): the play button still works */ });
+  };
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start, { once: true });
+}
